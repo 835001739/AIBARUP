@@ -1,0 +1,10 @@
+{
+  "area": "comic",
+  "owner": "lisi",
+  "agent": "claude-code",
+  "session": "2da4b963",
+  "reason": "Request G：章节出图数配置 + prompt 队列",
+  "claimed_at": "2026-09-10T11:55:17.225Z",
+  "expires_at": "2026-09-10T15:55:17.225Z",
+  "base_commit": "4076f76f1d7b4b3ce6c285001ae1886d65b8a652"
+}
