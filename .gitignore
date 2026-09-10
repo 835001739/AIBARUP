@@ -39,3 +39,6 @@ venv/
 
 # Claude Code 机器本地配置（含本机绝对路径，由 coagent join 自动生成）
 .claude/settings.local.json
+
+# WorkBuddy 机器本地配置（含本机绝对路径，由 coagent join 自动生成）
+.workbuddy/settings.json
