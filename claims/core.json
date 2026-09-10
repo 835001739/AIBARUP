@@ -1,0 +1,10 @@
+{
+  "area": "core",
+  "owner": "qinsu",
+  "agent": "workbuddy",
+  "session": "0261392a",
+  "reason": "db 迁移幂等性改造",
+  "claimed_at": "2026-09-10T11:55:34.250Z",
+  "expires_at": "2026-09-10T15:55:34.250Z",
+  "base_commit": "a236db9b2a04c5379f75596881f92c7c855570cc"
+}
