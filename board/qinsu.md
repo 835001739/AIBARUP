@@ -1,10 +1,8 @@
-# qinsu 的看板
-
 ## 进行中
-- （示例）重构 income-split 预聚合 @ settlement-rule
+- Request G 漫画分镜工作流：可配置每章出图数 @ comic
 
 ## 待办
-- 
+- 章节图像查看器补 E2E 测试
 
 ## 已完成
-- 
+- M12 漫画工作室基础能力
