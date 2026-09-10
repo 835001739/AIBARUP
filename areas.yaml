@@ -1,0 +1,23 @@
+# 代码区域定义：area -> path globs
+# 原则：5~8 个区域。太细（文件级）一遇重构就失效，太粗则互相阻塞。
+areas:
+  core:
+    desc: aibarup 核心逻辑
+    paths:
+      - "src/**"
+  api:
+    desc: 接口层
+    paths:
+      - "api/**"
+      - "routes/**"
+  frontend:
+    desc: 前端
+    paths:
+      - "web/**"
+      - "src/ui/**"
+  data:
+    desc: 数据层与脚本
+    paths:
+      - "sql/**"
+      - "etl/**"
+      - "scripts/**"
