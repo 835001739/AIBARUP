@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="AIBAR · 本地 AI 创作中枢：提示词工作台、图片反推、工作流与画廊归档。">
+  <title>提示词工作台 · AIBAR</title>
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/pages.css">
+</head>
+<body>
+<a class="skip-link" href="#workspace">跳到主内容</a>
+
+<div class="app">
+  <!-- ============================================================
+       左侧导航（224px，固定、占满高度）
+       ============================================================ -->
+  <aside class="sidebar" id="sidebar" aria-label="主导航">
+    <div class="sidebar-brand">
+      <span class="brand-mark" data-icon="sparkles" data-icon-size="18"></span>
+      <span>
+        <span class="brand-name">AIBAR</span><br>
+        <span class="brand-sub">AI Creative Studio</span>
+      </span>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="页面导航">
+      <div class="nav-group">
+        <div class="nav-group-title" id="nav-group-create">创作</div>
+        <div class="nav-group-items" role="list" aria-labelledby="nav-group-create">
+          <button type="button" class="nav-item" data-tab="studio">
+            <span class="nav-icon" data-icon="sparkles" data-icon-size="18"></span>
+            <span class="nav-label">提示词工作台</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="workflows">
+            <span class="nav-icon" data-icon="workflow" data-icon-size="18"></span>
+            <span class="nav-label">工作流</span>
+            <span class="badge badge-count">0</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="comic">
+            <span class="nav-icon" data-icon="book" data-icon-size="18"></span>
+            <span class="nav-label">漫画工作室</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="actors">
+            <span class="nav-icon" data-icon="users" data-icon-size="18"></span>
+            <span class="nav-label">演员库</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="groups">
+            <span class="nav-icon" data-icon="film" data-icon-size="18"></span>
+            <span class="nav-label">组图</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="video">
+            <span class="nav-icon" data-icon="play" data-icon-size="18"></span>
+            <span class="nav-label">视频转帧</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="videopaint">
+            <span class="nav-icon" data-icon="film" data-icon-size="18"></span>
+            <span class="nav-label">视频转绘</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title" id="nav-group-assets">素材</div>
+        <div class="nav-group-items" role="list" aria-labelledby="nav-group-assets">
+          <button type="button" class="nav-item" data-tab="gallery">
+            <span class="nav-icon" data-icon="image" data-icon-size="18"></span>
+            <span class="nav-label">画廊</span>
+            <span class="badge badge-count">0</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="cases">
+            <span class="nav-icon" data-icon="layers" data-icon-size="18"></span>
+            <span class="nav-label">案例库</span>
+            <span class="badge badge-count">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title" id="nav-group-res">资源</div>
+        <div class="nav-group-items" role="list" aria-labelledby="nav-group-res">
+          <button type="button" class="nav-item" data-tab="models">
+            <span class="nav-icon" data-icon="cube" data-icon-size="18"></span>
+            <span class="nav-label">模型</span>
+            <span class="badge badge-count">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title" id="nav-group-sys">系统</div>
+        <div class="nav-group-items" role="list" aria-labelledby="nav-group-sys">
+          <button type="button" class="nav-item" data-tab="logs">
+            <span class="nav-icon" data-icon="list" data-icon-size="18"></span>
+            <span class="nav-label">同步日志</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="comfy-card">
+        <div class="comfy-row">
+          <span id="comfy-dot" class="status-dot is-off" aria-hidden="true"></span>
+          <span id="comfy-text" class="status-text">ComfyUI 已停止</span>
+        </div>
+        <div id="comfy-host" class="text-tertiary"></div>
+        <button id="btn-comfy-start" type="button" class="btn btn-primary btn-block btn-sm comfy-start">
+          <span data-icon="play" data-icon-size="14"></span><span>启动 ComfyUI</span>
+        </button>
+      </div>
+      <div class="sync-row">
+        <label class="switch">
+          <input id="auto-sync" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>自动同步</span>
+        </label>
+      </div>
+      <div id="last-sync" class="sync-meta">尚未同步</div>
+    </div>
+  </aside>
+
+  <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       主区：顶部上下文栏 + 工作区
+       ============================================================ -->
+  <div class="app-main">
+    <header class="topbar">
+      <button id="btn-nav-toggle" type="button" class="icon-btn topbar-menu" aria-label="打开导航" aria-expanded="false" aria-controls="sidebar">
+        <span data-icon="menu" data-icon-size="18"></span>
+      </button>
+      <div class="topbar-text">
+        <h1 class="topbar-title" id="page-title">提示词工作台</h1>
+        <span class="topbar-sep" aria-hidden="true">·</span>
+        <p class="topbar-desc" id="page-desc">挑词条、写原文、一键扩写，或切换到图片反推重建提示词</p>
+      </div>
+      <div class="topbar-actions">
+        <div id="topbar-actions" class="topbar-actions"></div>
+        <button id="btn-sync-now" type="button" class="btn btn-secondary">
+          <span data-icon="refresh" data-icon-size="15"></span><span class="btn-label">立即同步</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace" id="workspace">
+
+      <!-- ========================================================
+           提示词工作台（M8.5 / M9.3）
+           ======================================================== -->
+      <section class="panel" data-panel="studio" aria-label="提示词工作台">
+        <div class="panel-inner">
+          <div class="studio">
+            <div class="studio-top">
+              <div class="seg" id="seg-mode" role="tablist" aria-label="创作模式">
+                <button type="button" class="seg-opt is-active" data-mode="expand" role="tab" aria-checked="true">正向扩写</button>
+                <button type="button" class="seg-opt" data-mode="reverse" role="tab" aria-checked="false">图片反推</button>
+              </div>
+              <div class="seg" id="seg-media" role="tablist" aria-label="媒体类型">
+                <button type="button" class="seg-opt is-active" data-media="image" role="tab" aria-checked="true">图片</button>
+                <button type="button" class="seg-opt" data-media="video" role="tab" aria-checked="false">视频</button>
+                <button type="button" class="seg-opt" data-media="music" role="tab" aria-checked="false">歌曲</button>
+              </div>
+              <span class="studio-hint">切换媒体类型只影响左侧词库筛选，原始提示词保持不变</span>
+              <span class="spacer"></span>
+              <div class="studio-access">
+                <button id="btn-open-library" type="button" class="btn btn-secondary btn-sm access-library">
+                  <span data-icon="panelLeft" data-icon-size="14"></span><span>词库</span>
+                </button>
+                <button id="btn-open-result" type="button" class="btn btn-secondary btn-sm access-result">
+                  <span data-icon="panelRight" data-icon-size="14"></span><span>结果</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="studio-body" id="studio-body">
+
+              <!-- ------------------------------------------------ 左：提示词库 -->
+              <aside class="studio-col studio-lib" id="studio-lib" aria-label="提示词库">
+                <div class="col-head">
+                  <span class="col-title">提示词库</span>
+                  <span class="grow"></span>
+                  <button id="btn-lib-collapse" type="button" class="icon-btn" aria-label="折叠词库" aria-expanded="true" aria-controls="studio-lib">
+                    <span data-icon="panelLeft" data-icon-size="16"></span>
+                  </button>
+                  <button id="btn-lib-close" type="button" class="icon-btn rail-close" aria-label="关闭词库抽屉">
+                    <span data-icon="close" data-icon-size="16"></span>
+                  </button>
+                </div>
+                <div class="rail">
+                  <button id="btn-lib-expand" type="button" class="icon-btn" aria-label="展开词库">
+                    <span data-icon="panelLeft" data-icon-size="16"></span>
+                  </button>
+                  <span class="rail-text">提示词库</span>
+                </div>
+                <div class="col-body">
+                  <div id="lib-view-main" class="view">
+                    <div class="lib-search-row">
+                      <div class="search">
+                        <span class="search-icon" data-icon="search" data-icon-size="15"></span>
+                        <input id="lib-search" class="input" type="search" placeholder="搜索词条标题或正文" aria-label="搜索提示词词条">
+                      </div>
+                      <div class="lib-meta-row">
+                        <span id="lib-count" class="col-sub">图片 0 条</span>
+                        <span class="grow"></span>
+                        <button id="btn-lib-new" type="button" class="btn btn-ghost btn-sm" aria-label="新建词条">新建词条</button>
+                        <button id="lib-filters-toggle" type="button" class="btn btn-ghost btn-sm" aria-expanded="false" aria-controls="lib-filters-panel">更多筛选</button>
+                        <button id="btn-candidates" type="button" class="btn btn-ghost btn-sm">
+                          <span>候选审核</span><span id="lib-candidate-count" class="badge badge-count">0</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="lib-chips" class="chip-row"></div>
+
+                    <div id="lib-filters-panel" class="filter-grid" hidden>
+                      <label class="field">
+                        <span class="field-label">维度</span>
+                        <select id="lib-f-dimension" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">子类</span>
+                        <select id="lib-f-subcategory" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">模型档案</span>
+                        <select id="lib-f-profile" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">排序</span>
+                        <select id="lib-f-sort" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">来源</span>
+                        <select id="lib-f-source" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">标签</span>
+                        <select id="lib-f-tag" class="select"></select>
+                      </label>
+                      <label class="switch">
+                        <input id="lib-favorite" type="checkbox">
+                        <span class="switch-track" aria-hidden="true"></span>
+                        <span>仅看收藏</span>
+                      </label>
+                    </div>
+
+                    <div id="lib-list" class="entry-list"></div>
+                    <div id="lib-pager" class="pager"></div>
+                  </div>
+
+                  <div id="lib-view-candidates" class="view" hidden>
+                    <div class="lib-meta-row">
+                      <button id="btn-cand-back" type="button" class="btn btn-ghost btn-sm">返回词库</button>
+                      <span class="col-sub">待确认候选片段，可批准入库或拒绝</span>
+                    </div>
+                    <div id="lib-cand-list" class="entry-list"></div>
+                    <div id="lib-cand-pager" class="pager"></div>
+                  </div>
+                </div>
+              </aside>
+
+              <!-- ------------------------------------------------ 中：创作画布 -->
+              <div class="studio-canvas">
+                <div class="col-head">
+                  <span class="col-title">创作画布</span>
+                  <span class="grow"></span>
+                  <span class="col-sub">Ctrl / Cmd + Enter 可快速扩写</span>
+                </div>
+                <div class="canvas-body">
+
+                  <!-- 正向扩写 -->
+                  <div id="view-expand" class="view">
+                    <div class="canvas-guide">
+                      <span class="guide-title">正向扩写</span>
+                      <span class="guide-desc">写下你的原始想法，或点击左侧词条填入片段；扩写不会改动原文，随时可恢复。</span>
+                    </div>
+
+                    <div class="prompt-canvas" id="prompt-canvas">
+                      <label class="sr-only" for="prompt-input">原始提示词</label>
+                      <textarea id="prompt-input" class="textarea" rows="8" maxlength="2000"
+                        placeholder="用一句话描述你想生成的内容，例如：一位穿红色风衣的女孩站在雨夜的东京街头"></textarea>
+                      <div class="canvas-meta">
+                        <span id="prompt-count">0 / 2000 字符</span>
+                        <span id="prompt-caret">未聚焦时插入到末尾</span>
+                        <span class="grow"></span>
+                      </div>
+                    </div>
+
+                    <div class="options-basic">
+                      <label class="field">
+                        <span class="field-label">模型档案</span>
+                        <select id="opt-profile" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">扩写强度</span>
+                        <select id="opt-intensity" class="select"></select>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">场景模板</span>
+                        <select id="opt-template" class="select"></select>
+                      </label>
+                    </div>
+
+                    <div class="disclosure">
+                      <button id="adv-toggle" type="button" class="disclosure-trigger" aria-expanded="false" aria-controls="adv-panel">
+                        <span data-icon="sliders" data-icon-size="16"></span>
+                        <span>高级设置</span>
+                        <span class="caret" data-icon="chevronDown" data-icon-size="16"></span>
+                      </button>
+                      <div id="adv-panel" class="disclosure-body" hidden>
+                        <label class="field">
+                          <span class="field-label">目标工作流</span>
+                          <select id="opt-workflow" class="select"></select>
+                        </label>
+                        <p class="text-tertiary">目标工作流只用于「应用到工作流模板」，不参与扩写计算。</p>
+                      </div>
+                    </div>
+
+                    <div class="action-bar">
+                      <button id="btn-expand" type="button" class="btn btn-primary">
+                        <span data-icon="sparkles" data-icon-size="15"></span><span>一键扩写</span>
+                      </button>
+                      <button id="btn-restore" type="button" class="btn btn-secondary">
+                        <span data-icon="undo" data-icon-size="15"></span><span>恢复原文</span>
+                      </button>
+                      <span class="grow"></span>
+                      <span id="context-actions" class="result-actions" hidden>
+                        <button id="btn-apply-workflow" type="button" class="btn btn-ghost btn-sm">应用到工作流模板</button>
+                        <button id="btn-launch" type="button" class="btn btn-ghost btn-sm">使用此提示词启动</button>
+                        <button id="btn-save-history" type="button" class="btn btn-ghost btn-sm">保存历史</button>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- 图片反推（M9.3） -->
+                  <div id="view-reverse" class="view" hidden>
+                    <div class="rev-steps seg" id="rev-steps" role="tablist" aria-label="反推步骤">
+                      <button type="button" class="seg-opt is-active" data-step="source" role="tab" aria-selected="true">图片</button>
+                      <button type="button" class="seg-opt" data-step="settings" role="tab" aria-selected="false">设置</button>
+                      <button type="button" class="seg-opt" data-step="result" role="tab" aria-selected="false">结果</button>
+                    </div>
+
+                    <div class="reverse">
+                      <section class="reverse-col" id="rev-col-source" aria-label="素材与预览">
+                        <div class="col-head">
+                          <span class="col-title">素材与预览</span>
+                          <span class="grow"></span>
+                          <button id="btn-rev-clear" type="button" class="btn btn-ghost btn-sm" hidden>更换图片</button>
+                        </div>
+                        <div class="col-body">
+                          <div id="rev-drop" class="rev-drop" tabindex="0" role="button" aria-label="选择或拖入待反推的图片">
+                            <span data-icon="upload" data-icon-size="20"></span>
+                            <span>把图片拖到这里</span>
+                            <span class="text-tertiary">支持 png / jpg / webp，单张 ≤ 20MB</span>
+                            <div class="rev-drop-actions">
+                              <button id="btn-rev-choose" type="button" class="btn btn-secondary btn-sm">选择图片</button>
+                              <button id="btn-rev-paste" type="button" class="btn btn-ghost btn-sm">粘贴图片</button>
+                            </div>
+                            <input id="rev-file" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp">
+                          </div>
+                          <div id="rev-preview-wrap" class="rev-preview" hidden>
+                            <img id="rev-preview" class="rev-preview-img" alt="待反推图片预览">
+                            <dl id="rev-meta" class="rev-meta"></dl>
+                            <div id="rev-source-note" class="callout callout-info"></div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="reverse-col" id="rev-col-settings" aria-label="分析设置">
+                        <div class="col-head">
+                          <span class="col-title">分析设置</span>
+                        </div>
+                        <div class="col-body">
+                          <div class="filter-grid">
+                            <label class="field">
+                              <span class="field-label">分析来源</span>
+                              <select id="rev-source-mode" class="select"></select>
+                            </label>
+                            <label class="field">
+                              <span class="field-label">目标模型档案</span>
+                              <select id="rev-profile" class="select"></select>
+                            </label>
+                            <label class="field">
+                              <span class="field-label">分析精度</span>
+                              <select id="rev-precision" class="select"></select>
+                            </label>
+                            <label class="field">
+                              <span class="field-label">视觉 Provider</span>
+                              <select id="rev-provider" class="select"></select>
+                            </label>
+                            <div class="control-row">
+                              <button id="btn-manage-providers" type="button" class="btn btn-secondary btn-sm">
+                                <span data-icon="cpu" data-icon-size="14"></span><span>管理 Provider</span>
+                              </button>
+                            </div>
+                            <div id="rev-provider-note" class="callout callout-info"></div>
+                          </div>
+                          <div class="control-row">
+                            <button id="btn-reverse-run" type="button" class="btn btn-primary" disabled>
+                              <span data-icon="eye" data-icon-size="15"></span><span>开始反推</span>
+                            </button>
+                            <button id="btn-reverse-cancel" type="button" class="btn btn-secondary" hidden>取消</button>
+                          </div>
+                          <div id="rev-stages" class="stage-list" aria-label="分析阶段"></div>
+                          <div id="rev-status" class="text-meta text-secondary" role="status" aria-live="polite"></div>
+                        </div>
+                      </section>
+
+                      <section class="reverse-col reverse-col-results" id="rev-col-results" aria-label="结构化结果">
+                        <div class="col-head">
+                          <span class="col-title">结构化结果</span>
+                        </div>
+                        <div class="col-body">
+                          <div id="rev-result-meta" class="rev-result-meta"></div>
+                          <div id="rev-warnings"></div>
+                          <div id="rev-sections" class="entry-list"></div>
+                          <div class="rev-actions">
+                            <button id="btn-rev-fill" type="button" class="btn btn-secondary btn-sm" disabled>填入原始提示词</button>
+                            <button id="btn-rev-expand" type="button" class="btn btn-secondary btn-sm" disabled>继续扩写</button>
+                            <button id="btn-rev-copy-pos" type="button" class="btn btn-ghost btn-sm" disabled>复制正向</button>
+                            <button id="btn-rev-copy-neg" type="button" class="btn btn-ghost btn-sm" disabled>复制负向</button>
+                            <button id="btn-rev-save" type="button" class="btn btn-ghost btn-sm" disabled>保存反推记录</button>
+                          </div>
+                          <div class="result-block">
+                            <div class="result-block-head">
+                              <span>反推历史</span>
+                              <span class="grow"></span>
+                              <button id="btn-rev-history-refresh" type="button" class="btn btn-ghost btn-sm">刷新</button>
+                            </div>
+                            <div id="rev-history-list" class="entry-list"></div>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- ------------------------------------------------ 右：扩写结果 -->
+              <aside class="studio-col studio-result" id="studio-result" aria-label="扩写结果">
+                <div class="col-head">
+                  <span class="col-title">扩写结果</span>
+                  <span class="grow"></span>
+                  <button id="btn-result-collapse" type="button" class="icon-btn" aria-label="折叠结果区" aria-expanded="true" aria-controls="studio-result">
+                    <span data-icon="panelRight" data-icon-size="16"></span>
+                  </button>
+                  <button id="btn-result-close" type="button" class="icon-btn rail-close" aria-label="关闭结果抽屉">
+                    <span data-icon="close" data-icon-size="16"></span>
+                  </button>
+                </div>
+                <div class="rail">
+                  <button id="btn-result-expand" type="button" class="icon-btn" aria-label="展开结果区">
+                    <span data-icon="panelRight" data-icon-size="16"></span>
+                  </button>
+                  <span class="rail-text">扩写结果</span>
+                </div>
+                <div class="col-body">
+                  <div id="result-body" class="view"></div>
+                  <div class="disclosure">
+                    <button id="history-toggle" type="button" class="disclosure-trigger" aria-expanded="false" aria-controls="history-panel">
+                      <span data-icon="list" data-icon-size="16"></span>
+                      <span>扩写历史</span>
+                      <span class="caret" data-icon="chevronDown" data-icon-size="16"></span>
+                    </button>
+                    <div id="history-panel" class="disclosure-body" hidden>
+                      <div id="history-list" class="entry-list"></div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           工作流
+           ======================================================== -->
+      <section class="panel" data-panel="workflows" hidden aria-label="工作流">
+        <div class="panel-inner">
+          <div class="page-toolbar">
+            <div class="search">
+              <span class="search-icon" data-icon="search" data-icon-size="15"></span>
+              <input id="wf-search" class="input" type="search" placeholder="搜索工作流名称、节点类型或提示词" aria-label="搜索工作流">
+            </div>
+            <span class="grow"></span>
+            <button id="btn-wf-pose" type="button" class="btn btn-secondary btn-sm" title="生成 SDXL + ControlNet-Union openpose 工作流">
+              <span data-icon="workflow" data-icon-size="14"></span><span>生成姿势工作流</span>
+            </button>
+          </div>
+          <div id="wf-grid" class="card-grid"></div>
+          <div id="wf-pager" class="pager"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           漫画工作室（M12）
+           ======================================================== -->
+      <section class="panel" data-panel="comic" hidden aria-label="漫画工作室">
+        <div class="panel-inner">
+          <div id="comic-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           演员库（M13）
+           ======================================================== -->
+      <section class="panel" data-panel="actors" hidden aria-label="演员库">
+        <div class="panel-inner">
+          <div id="actors-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           组图（M14）
+           ======================================================== -->
+      <section class="panel" data-panel="groups" hidden aria-label="组图">
+        <div class="panel-inner">
+          <div id="groups-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           视频转帧（M15）：视频 → 序列帧 / GIF
+           ======================================================== -->
+      <section class="panel" data-panel="video" hidden aria-label="视频转帧">
+        <div class="panel-inner">
+          <div id="video-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           视频转绘（M16）：视频 → 逐帧提姿态 → 参考图锁脸重绘 → 组图 + 无背景序列帧
+           ======================================================== -->
+      <section class="panel" data-panel="videopaint" hidden aria-label="视频转绘">
+        <div class="panel-inner">
+          <div id="vp-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           画廊
+           ======================================================== -->
+      <section class="panel" data-panel="gallery" hidden aria-label="画廊">
+        <div class="panel-inner">
+          <div class="page-toolbar">
+            <div class="search">
+              <span class="search-icon" data-icon="search" data-icon-size="15"></span>
+              <input id="gal-search" class="input" type="search" placeholder="搜索文件名、提示词或关联工作流" aria-label="搜索图库">
+            </div>
+            <span class="grow"></span>
+            <span id="gal-total" class="text-tertiary">共 0 张</span>
+          </div>
+          <div id="gal-grid" class="gal-grid"></div>
+          <div class="control-row">
+            <button id="btn-gal-more" type="button" class="btn btn-secondary" hidden>加载更多</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           案例库
+           ======================================================== -->
+      <section class="panel" data-panel="cases" hidden aria-label="案例库">
+        <div class="panel-inner">
+          <div class="page-toolbar">
+            <div id="case-styles" class="style-chips"></div>
+          </div>
+          <div id="case-grid"></div>
+          <div id="case-pager" class="pager"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           模型
+           ======================================================== -->
+      <section class="panel" data-panel="models" hidden aria-label="模型">
+        <div class="panel-inner">
+          <div class="page-toolbar">
+            <div class="search">
+              <span class="search-icon" data-icon="search" data-icon-size="15"></span>
+              <input id="model-search" class="input" type="search" placeholder="搜索模型名称或路径" aria-label="搜索模型">
+            </div>
+            <span class="grow"></span>
+            <span id="models-total" class="text-tertiary">共 0 个模型</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th scope="col">名称</th>
+                  <th scope="col">类型</th>
+                  <th scope="col">路径</th>
+                  <th scope="col">大小</th>
+                </tr>
+              </thead>
+              <tbody id="models-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           同步日志
+           ======================================================== -->
+      <section class="panel" data-panel="logs" hidden aria-label="同步日志">
+        <div class="panel-inner">
+          <div class="page-toolbar">
+            <label class="field">
+              <span class="field-label">显示条数</span>
+              <select id="log-limit" class="select">
+                <option value="50">最近 50 条</option>
+                <option value="100">最近 100 条</option>
+                <option value="200">最近 200 条</option>
+              </select>
+            </label>
+            <span class="grow"></span>
+          </div>
+          <div id="log-list" class="log-list"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast-region" class="toast-region" role="region" aria-live="polite" aria-label="通知"></div>
+
+<!-- 普通脚本按依赖顺序加载：不使用 ES module、不引入任何 CDN 或 npm 包 -->
+<script src="/static/js/icons.js"></script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/library.js"></script>
+<script src="/static/js/studio.js"></script>
+<script src="/static/js/reverse.js"></script>
+<script src="/static/js/pages.js"></script>
+<script src="/static/js/comic.js"></script>
+<script src="/static/js/actors.js"></script>
+<script src="/static/js/player.js"></script>
+<script src="/static/js/groups.js"></script>
+<script src="/static/js/video.js"></script>
+<script src="/static/js/videopaint.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
