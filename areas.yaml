@@ -1,23 +1,52 @@
-# 代码区域定义：area -> path globs
-# 原则：5~8 个区域。太细（文件级）一遇重构就失效，太粗则互相阻塞。
+# AIBARUP 代码区域定义
+# 原则：5~8 个区域。按「模块边界 + 依赖方向」划分，不是按目录随便切。
+# 依赖方向（严格单向）：core ← sync/prompt/promptlib ← reverse/comic/video
 areas:
   core:
-    desc: aibarup 核心逻辑
+    desc: 共享地基：db / responses / errors / logging / 全局配置
     paths:
-      - "src/**"
-  api:
-    desc: 接口层
+      - "core/**"
+      - "config.py"
+      - "app.py"
+      - "resources/**"
+
+  comfyui-sync:
+    desc: M1-M4 ComfyUI 控制、解析、监听
     paths:
-      - "api/**"
-      - "routes/**"
+      - "sync/**"
+      - "comfyui_bridge/**"
+
+  prompt:
+    desc: M6/M7 提示词知识库、扩写引擎、精品词库与自动学习
+    paths:
+      - "prompt/**"
+      - "promptlib/**"
+
+  reverse:
+    desc: M9-M11 图片反推与 Provider
+    paths:
+      - "reverse/**"
+
+  comic:
+    desc: M12 漫画工作室：分镜、角色、姿势、FLUX2 出图
+    paths:
+      - "comic/**"
+      - "video/**"
+
+  videopaint:
+    desc: 视频绘制与重绘
+    paths:
+      - "videopaint/**"
+
   frontend:
-    desc: 前端
+    desc: 原生前端（无构建步骤）
     paths:
-      - "web/**"
-      - "src/ui/**"
-  data:
-    desc: 数据层与脚本
+      - "static/**"
+      - "templates/**"
+
+  docs-tests:
+    desc: 文档与测试
     paths:
-      - "sql/**"
-      - "etl/**"
+      - "docs/**"
+      - "tests/**"
       - "scripts/**"
