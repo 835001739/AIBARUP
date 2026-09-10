@@ -1,3 +1,4 @@
 {"ts":"2026-09-10T11:54:26.990Z","user":"qinsu","agent":"workbuddy","kind":"note","text":"更新中枢文件 areas.yaml","ref":"areas.yaml"}
 {"ts":"2026-09-10T11:54:28.616Z","user":"qinsu","agent":"workbuddy","kind":"note","text":"更新中枢文件 agents/AGENTS.md","ref":"agents/AGENTS.md"}
 {"ts":"2026-09-10T11:54:52.822Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[convention] 建表只写 core/db.py，业务包禁止 CREATE TABLE","ref":"2026-09-10-建表只写-core-db-py-业务包禁止-create-table"}
+{"ts":"2026-09-10T11:54:54.256Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[convention] 统一 API 契约 ok/fail + AIBARError","ref":"2026-09-10-统一-api-契约-ok-fail-aibarerror"}
