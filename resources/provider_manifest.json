@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-01-01 00:00:00",
+  "notes": [
+    "可复现安装清单：只记录仓库、commit、文件名与校验信息，不记录密钥、token 或本机绝对路径。",
+    "node_contract 由 /object_info 实测后写回，是本 Provider 节点 class name 与输入枚举的兜底，不是硬编码依赖。",
+    "checksum 为 null 表示尚未采集；安装脚本在有 checksum 时才做哈希核验，否则只做大小核验。",
+    "只支持 GGUF + Metal 推理，不引入 CUDA / 其他后端。"
+  ],
+  "runtime": {
+    "backend": "gguf",
+    "acceleration": "metal",
+    "python_package": "llama-cpp-python",
+    "model_subdir": "LLM/GGUF"
+  },
+  "providers": {
+    "comfyui_qwen3vl_8b": {
+      "provider_key": "comfyui_qwen3vl_8b",
+      "label": "Qwen3-VL 8B · 高质量结构化",
+      "node_repo": "1038lab/ComfyUI-QwenVL",
+      "node_commit": "88d47a8e2be9e6beebfe283485c1dcf4d0a7dc2a",
+      "model_repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+      "model_filename": "Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+      "expected_size": 5027784800,
+      "checksum": null,
+      "mmproj_repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+      "mmproj_filename": "mmproj-Qwen3VL-8B-Instruct-F16.gguf",
+      "mmproj_expected_size": 1159029824,
+      "mmproj_checksum": null,
+      "quantization": "Q4_K_M",
+      "install_status": "ready",
+      "node_contract": {
+        "node_class": "AILab_QwenVL_GGUF",
+        "inputs": {
+          "model_name": {
+            "enum": ["Qwen3.5-4B-UD-Q4_K_XL.gguf", "Qwen3.6-27B-UD-Q3_K_XL.gguf", "Qwen3.8-27B-UD-Q3_K_XL.gguf", "Qwen3VL-4B-Instruct-F16.gguf", "Qwen3VL-4B-Instruct-Q4_K_M.gguf", "Qwen3VL-4B-Instruct-Q8_0.gguf", "Qwen3VL-4B-Thinking-F16.gguf", "Qwen3VL-4B-Thinking-Q4_K_M.gguf", "Qwen3VL-4B-Thinking-Q8_0.gguf", "Qwen3VL-8B-Instruct-F16.gguf", "Qwen3VL-8B-Instruct-Q4_K_M.gguf", "Qwen3VL-8B-Instruct-Q8_0.gguf", "Qwen3VL-8B-Thinking-F16.gguf", "Qwen3VL-8B-Thinking-Q4_K_M.gguf", "Qwen3VL-8B-Thinking-Q8_0.gguf"]
+          },
+          "preset_prompt": {
+            "enum": ["🖼️ Tags", "🖼️ Simple Description", "🖼️ Detailed Description", "🖼️ Ultra Detailed Description", "🎬 Cinematic Description", "🖼️ Detailed Analysis", "📹 Video Summary", "📖 Short Story", "🪄 Prompt Refine & Expand"]
+          },
+          "custom_prompt": {
+            "type": "STRING"
+          },
+          "max_tokens": {
+            "type": "INT"
+          },
+          "keep_model_loaded": {
+            "type": "BOOLEAN"
+          },
+          "seed": {
+            "type": "INT"
+          },
+          "image": {
+            "type": "IMAGE"
+          },
+          "video": {
+            "type": "IMAGE"
+          }
+        },
+        "outputs": [
+          "STRING"
+        ],
+        "verified_at": "2026-08-28 22:30:00"
+      },
+      "verified_at": "2026-08-29 11:47:56"
+    },
+    "comfyui_qwen3vl_4b": {
+      "provider_key": "comfyui_qwen3vl_4b",
+      "label": "Qwen3-VL 4B · 均衡结构化",
+      "node_repo": "1038lab/ComfyUI-QwenVL",
+      "node_commit": "88d47a8e2be9e6beebfe283485c1dcf4d0a7dc2a",
+      "model_repo": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+      "model_filename": "Qwen3VL-4B-Instruct-Q4_K_M.gguf",
+      "expected_size": 2497281664,
+      "checksum": null,
+      "mmproj_repo": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+      "mmproj_filename": "mmproj-Qwen3VL-4B-Instruct-F16.gguf",
+      "mmproj_expected_size": 836180256,
+      "mmproj_checksum": null,
+      "quantization": "Q4_K_M",
+      "install_status": "ready",
+      "node_contract": {
+        "node_class": "AILab_QwenVL_GGUF",
+        "inputs": {
+          "model_name": {
+            "enum": ["Qwen3.5-4B-UD-Q4_K_XL.gguf", "Qwen3.6-27B-UD-Q3_K_XL.gguf", "Qwen3.8-27B-UD-Q3_K_XL.gguf", "Qwen3VL-4B-Instruct-F16.gguf", "Qwen3VL-4B-Instruct-Q4_K_M.gguf", "Qwen3VL-4B-Instruct-Q8_0.gguf", "Qwen3VL-4B-Thinking-F16.gguf", "Qwen3VL-4B-Thinking-Q4_K_M.gguf", "Qwen3VL-4B-Thinking-Q8_0.gguf", "Qwen3VL-8B-Instruct-F16.gguf", "Qwen3VL-8B-Instruct-Q4_K_M.gguf", "Qwen3VL-8B-Instruct-Q8_0.gguf", "Qwen3VL-8B-Thinking-F16.gguf", "Qwen3VL-8B-Thinking-Q4_K_M.gguf", "Qwen3VL-8B-Thinking-Q8_0.gguf"]
+          },
+          "preset_prompt": {
+            "enum": ["🖼️ Tags", "🖼️ Simple Description", "🖼️ Detailed Description", "🖼️ Ultra Detailed Description", "🎬 Cinematic Description", "🖼️ Detailed Analysis", "📹 Video Summary", "📖 Short Story", "🪄 Prompt Refine & Expand"]
+          },
+          "custom_prompt": {
+            "type": "STRING"
+          },
+          "max_tokens": {
+            "type": "INT"
+          },
+          "keep_model_loaded": {
+            "type": "BOOLEAN"
+          },
+          "seed": {
+            "type": "INT"
+          },
+          "image": {
+            "type": "IMAGE"
+          },
+          "video": {
+            "type": "IMAGE"
+          }
+        },
+        "outputs": [
+          "STRING"
+        ],
+        "verified_at": "2026-08-28 22:30:00"
+      },
+      "verified_at": "2026-08-29 12:06:17"
+    },
+    "comfyui_joycaption_beta": {
+      "provider_key": "comfyui_joycaption_beta",
+      "label": "JoyCaption Beta One · 提示词专项",
+      "node_repo": "1038lab/ComfyUI-JoyCaption",
+      "node_commit": "a0e9f0a17a5deb933fef341e2c7b0131e4f83c8a",
+      "model_repo": "fancyfeast/llama-joycaption-beta-one-hf-llava-GGUF",
+      "model_filename": "llama-joycaption-beta-one-hf-llava.Q5_K_M.gguf",
+      "expected_size": 6152540651,
+      "checksum": null,
+      "mmproj_repo": "fancyfeast/llama-joycaption-beta-one-hf-llava-GGUF",
+      "mmproj_filename": "llama-joycaption-beta-one-hf-llava-mmproj-f16.gguf",
+      "mmproj_expected_size": null,
+      "mmproj_checksum": null,
+      "quantization": "Q5_K_M",
+      "install_status": "not_installed",
+      "gated": true,
+      "gated_note": "该仓库需 HuggingFace 登录令牌（gated repo，匿名 401）。安装前先 `huggingface-cli login` 或设置 HF_TOKEN，再单独执行 --provider comfyui_joycaption_beta --download。",
+      "node_contract": null,
+      "verified_at": null
+    }
+  }
+}

@@ -1,0 +1,52 @@
+# AIBARUP 代码区域定义
+# 原则：5~8 个区域。按「模块边界 + 依赖方向」划分，不是按目录随便切。
+# 依赖方向（严格单向）：core ← sync/prompt/promptlib ← reverse/comic/video
+areas:
+  core:
+    desc: 共享地基：db / responses / errors / logging / 全局配置
+    paths:
+      - "core/**"
+      - "config.py"
+      - "app.py"
+      - "resources/**"
+
+  comfyui-sync:
+    desc: M1-M4 ComfyUI 控制、解析、监听
+    paths:
+      - "sync/**"
+      - "comfyui_bridge/**"
+
+  prompt:
+    desc: M6/M7 提示词知识库、扩写引擎、精品词库与自动学习
+    paths:
+      - "prompt/**"
+      - "promptlib/**"
+
+  reverse:
+    desc: M9-M11 图片反推与 Provider
+    paths:
+      - "reverse/**"
+
+  comic:
+    desc: M12 漫画工作室：分镜、角色、姿势、FLUX2 出图
+    paths:
+      - "comic/**"
+      - "video/**"
+
+  videopaint:
+    desc: 视频绘制与重绘
+    paths:
+      - "videopaint/**"
+
+  frontend:
+    desc: 原生前端（无构建步骤）
+    paths:
+      - "static/**"
+      - "templates/**"
+
+  docs-tests:
+    desc: 文档与测试
+    paths:
+      - "docs/**"
+      - "tests/**"
+      - "scripts/**"

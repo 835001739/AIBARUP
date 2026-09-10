@@ -1,0 +1,94 @@
+/* ============================================================
+   AIBAR · 设计令牌（PRD M8.2）
+   所有颜色、圆角、动效与字号集中在此，组件层禁止硬编码色值。
+   ============================================================ */
+
+:root {
+  /* ---- 背景层级：canvas < surface < elevated < interactive ---- */
+  --color-bg-canvas: #0B0D10;
+  --color-bg-surface: #12151A;
+  --color-bg-elevated: #181C22;
+  --color-bg-interactive: #20242B;
+
+  /* ---- 文字 ---- */
+  --color-text-primary: #F4F7FB;
+  --color-text-secondary: #9BA4B2;
+  --color-text-tertiary: #687180;
+
+  /* ---- 描边 ---- */
+  --color-border-default: rgba(255, 255, 255, .08);
+  --color-border-strong: rgba(255, 255, 255, .14);
+
+  /* ---- 品牌（全站唯一普通强调色）---- */
+  --color-brand-primary: #6C72FF;
+  --color-brand-hover: #7C82FF;
+  --color-brand-soft: rgba(108, 114, 255, .14);
+
+  /* ---- 语义状态：仅用于成功 / 警告 / 错误 ---- */
+  --color-state-success: #39C982;
+  --color-state-warning: #F2B84B;
+  --color-state-error: #F06464;
+
+  /* 状态色的低饱和底色（用于 Badge / 提示条，避免大面积刺眼色块） */
+  --color-state-success-soft: rgba(57, 201, 130, .14);
+  --color-state-warning-soft: rgba(242, 184, 75, .14);
+  --color-state-error-soft: rgba(240, 100, 100, .14);
+
+  /* ---- 圆角：外层必须大于内层 ---- */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --radius-pill: 999px;
+
+  /* ---- 动效 ---- */
+  --motion-fast: 150ms;
+  --motion-normal: 220ms;
+  --ease-out: cubic-bezier(.22, .61, .36, 1);
+
+  /* ---- 字体 ---- */
+  --font-sans: Inter, -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- 字号（中文层级不使用全大写或过大字距）---- */
+  --text-page: clamp(24px, 1.6vw, 28px);   /* 页面标题 24–28 / 600 */
+  --text-section: 15px;                     /* 区块标题 14–16 / 600 */
+  --text-section-sm: 14px;
+  --text-body: 14px;                        /* 正文 13–14 */
+  --text-body-sm: 13px;
+  --text-meta: 12px;                        /* 辅助 11–12 */
+  --text-meta-sm: 11px;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ---- 间距 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ---- 阴影：只用于弹层 / 悬浮菜单 ---- */
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, .62);
+  --shadow-menu: 0 12px 32px rgba(0, 0, 0, .48);
+
+  /* ---- 布局尺寸 ---- */
+  --sidebar-w: 224px;
+  --topbar-h: 56px;
+  --content-max: 1680px;
+
+  /* ---- 焦点环：品牌色外环，禁止 outline:none 无替代 ---- */
+  --focus-ring: 0 0 0 2px var(--color-bg-canvas), 0 0 0 4px rgba(108, 114, 255, .6);
+  --focus-ring-inset: inset 0 0 0 1px rgba(108, 114, 255, .7);
+
+  /* ---- 层级 ---- */
+  --z-sticky: 20;
+  --z-drawer: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
+  color-scheme: dark;
+}

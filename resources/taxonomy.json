@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-28",
+  "media_types": [
+    {
+      "key": "image",
+      "label": "图片",
+      "description": "静态图像生成的精品描述片段",
+      "dimensions": [
+        {
+          "key": "subject",
+          "label": "主体与外观",
+          "subcategories": [
+            { "key": "person", "label": "人物" },
+            { "key": "creature", "label": "动物与生物" },
+            { "key": "object", "label": "器物与物件" },
+            { "key": "nature", "label": "自然物" }
+          ]
+        },
+        {
+          "key": "pose",
+          "label": "人物姿势",
+          "subcategories": [
+            { "key": "standing", "label": "站姿" },
+            { "key": "sitting", "label": "坐姿与卧姿" },
+            { "key": "dynamic", "label": "动态姿势" },
+            { "key": "hands", "label": "手部与面部细节" }
+          ]
+        },
+        {
+          "key": "action",
+          "label": "动作",
+          "subcategories": [
+            { "key": "daily", "label": "日常动作" },
+            { "key": "sport", "label": "运动动作" },
+            { "key": "interaction", "label": "交互动作" }
+          ]
+        },
+        {
+          "key": "clothing",
+          "label": "服装与材质",
+          "subcategories": [
+            { "key": "costume", "label": "服装" },
+            { "key": "material", "label": "材质表现" },
+            { "key": "accessory", "label": "配饰与细节" }
+          ]
+        },
+        {
+          "key": "environment",
+          "label": "环境与空间",
+          "subcategories": [
+            { "key": "nature", "label": "自然场景" },
+            { "key": "urban", "label": "城市场景" },
+            { "key": "interior", "label": "室内空间" }
+          ]
+        },
+        {
+          "key": "composition",
+          "label": "构图",
+          "subcategories": [
+            { "key": "classic", "label": "经典构图" },
+            { "key": "guidance", "label": "视觉引导" },
+            { "key": "negative_space", "label": "留白与对称" }
+          ]
+        },
+        {
+          "key": "camera",
+          "label": "景别与镜头",
+          "subcategories": [
+            { "key": "shot_size", "label": "景别" },
+            { "key": "lens", "label": "镜头语言" }
+          ]
+        },
+        {
+          "key": "lighting",
+          "label": "光影",
+          "subcategories": [
+            { "key": "direction", "label": "光位" },
+            { "key": "quality", "label": "光质" },
+            { "key": "effect", "label": "特殊光效" }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "色彩",
+          "subcategories": [
+            { "key": "tone", "label": "色调" },
+            { "key": "scheme", "label": "配色关系" }
+          ]
+        },
+        {
+          "key": "style",
+          "label": "视觉风格",
+          "subcategories": [
+            { "key": "realistic", "label": "写实" },
+            { "key": "illustration", "label": "插画与动漫" },
+            { "key": "art_movement", "label": "艺术流派" }
+          ]
+        },
+        {
+          "key": "mood",
+          "label": "氛围",
+          "subcategories": [
+            { "key": "emotion", "label": "情绪氛围" },
+            { "key": "time", "label": "时间氛围" }
+          ]
+        },
+        {
+          "key": "typography",
+          "label": "文字排版",
+          "subcategories": [
+            { "key": "layout", "label": "版式" },
+            { "key": "typeface", "label": "字体处理" }
+          ]
+        },
+        {
+          "key": "negative",
+          "label": "负向约束",
+          "subcategories": [
+            { "key": "quality", "label": "质量排除" },
+            { "key": "structure", "label": "结构排除" }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "video",
+      "label": "视频",
+      "description": "视频生成的运动、镜头与时间描述片段",
+      "dimensions": [
+        {
+          "key": "subject",
+          "label": "主体",
+          "subcategories": [
+            { "key": "person", "label": "人物" },
+            { "key": "object", "label": "物体与场景" }
+          ]
+        },
+        {
+          "key": "action",
+          "label": "连续动作",
+          "subcategories": [
+            { "key": "locomotion", "label": "位移运动" },
+            { "key": "body", "label": "肢体连续动作" }
+          ]
+        },
+        {
+          "key": "tempo",
+          "label": "运动速度与节奏",
+          "subcategories": [
+            { "key": "speed", "label": "速度" },
+            { "key": "rhythm", "label": "节奏" }
+          ]
+        },
+        {
+          "key": "performance",
+          "label": "表情与表演",
+          "subcategories": [
+            { "key": "expression", "label": "表情" },
+            { "key": "acting", "label": "表演" }
+          ]
+        },
+        {
+          "key": "environment",
+          "label": "环境变化",
+          "subcategories": [
+            { "key": "time", "label": "时间变化" },
+            { "key": "weather", "label": "天气与元素" }
+          ]
+        },
+        {
+          "key": "camera_move",
+          "label": "镜头运动",
+          "subcategories": [
+            { "key": "basic", "label": "推拉摇移" },
+            { "key": "advanced", "label": "跟拍与环绕" }
+          ]
+        },
+        {
+          "key": "shot",
+          "label": "景别与机位",
+          "subcategories": [
+            { "key": "shot_size", "label": "景别" },
+            { "key": "angle", "label": "机位角度" }
+          ]
+        },
+        {
+          "key": "focus",
+          "label": "焦点变化",
+          "subcategories": [
+            { "key": "pull", "label": "焦点转移" },
+            { "key": "depth", "label": "景深控制" }
+          ]
+        },
+        {
+          "key": "lighting_color",
+          "label": "光影与色彩",
+          "subcategories": [
+            { "key": "light", "label": "光线变化" },
+            { "key": "color", "label": "色彩基调" }
+          ]
+        },
+        {
+          "key": "style",
+          "label": "视觉风格",
+          "subcategories": [
+            { "key": "realistic", "label": "写实" },
+            { "key": "stylized", "label": "风格化" }
+          ]
+        },
+        {
+          "key": "transition",
+          "label": "转场",
+          "subcategories": [
+            { "key": "cut", "label": "剪辑转场" },
+            { "key": "effect", "label": "特效转场" }
+          ]
+        },
+        {
+          "key": "duration",
+          "label": "时长与循环约束",
+          "subcategories": [
+            { "key": "length", "label": "时长" },
+            { "key": "loop", "label": "循环衔接" }
+          ]
+        },
+        {
+          "key": "negative",
+          "label": "负向约束",
+          "subcategories": [
+            { "key": "quality", "label": "质量排除" },
+            { "key": "motion", "label": "运动排除" }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "music",
+      "label": "歌曲",
+      "description": "歌曲生成的风格、编曲与人声描述片段",
+      "dimensions": [
+        {
+          "key": "genre",
+          "label": "曲风",
+          "subcategories": [
+            { "key": "pop", "label": "流行" },
+            { "key": "electronic", "label": "电子" },
+            { "key": "band", "label": "摇滚与民谣" }
+          ]
+        },
+        {
+          "key": "emotion",
+          "label": "情绪",
+          "subcategories": [
+            { "key": "bright", "label": "明亮正向" },
+            { "key": "introvert", "label": "内敛低回" }
+          ]
+        },
+        {
+          "key": "tempo",
+          "label": "速度与 BPM",
+          "subcategories": [
+            { "key": "slow", "label": "慢速" },
+            { "key": "medium", "label": "中速" },
+            { "key": "fast", "label": "快速" }
+          ]
+        },
+        {
+          "key": "groove",
+          "label": "节拍与律动",
+          "subcategories": [
+            { "key": "meter", "label": "拍号" },
+            { "key": "pattern", "label": "律动型" }
+          ]
+        },
+        {
+          "key": "harmony",
+          "label": "调性与和声",
+          "subcategories": [
+            { "key": "mode", "label": "调式" },
+            { "key": "progression", "label": "和声进行" }
+          ]
+        },
+        {
+          "key": "structure",
+          "label": "段落结构",
+          "subcategories": [
+            { "key": "common", "label": "常见结构" },
+            { "key": "function", "label": "段落功能" }
+          ]
+        },
+        {
+          "key": "vocal",
+          "label": "人声类型与唱法",
+          "subcategories": [
+            { "key": "part", "label": "声部" },
+            { "key": "technique", "label": "唱法" }
+          ]
+        },
+        {
+          "key": "lyric",
+          "label": "语言与歌词主题",
+          "subcategories": [
+            { "key": "language", "label": "语言" },
+            { "key": "theme", "label": "主题" }
+          ]
+        },
+        {
+          "key": "instrument",
+          "label": "乐器与音色",
+          "subcategories": [
+            { "key": "acoustic", "label": "常规乐器" },
+            { "key": "synth", "label": "合成音色" }
+          ]
+        },
+        {
+          "key": "arrangement",
+          "label": "编曲层次",
+          "subcategories": [
+            { "key": "layer", "label": "层次" },
+            { "key": "texture", "label": "织体" }
+          ]
+        },
+        {
+          "key": "mix",
+          "label": "制作与混音",
+          "subcategories": [
+            { "key": "space", "label": "空间" },
+            { "key": "dynamic", "label": "动态" }
+          ]
+        },
+        {
+          "key": "era",
+          "label": "年代与地域质感",
+          "subcategories": [
+            { "key": "decade", "label": "年代" },
+            { "key": "region", "label": "地域" }
+          ]
+        },
+        {
+          "key": "exclude",
+          "label": "排除项",
+          "subcategories": [
+            { "key": "style", "label": "风格排除" },
+            { "key": "production", "label": "制作排除" }
+          ]
+        }
+      ]
+    }
+  ],
+  "model_profiles": [
+    {
+      "key": "generic",
+      "label": "通用",
+      "description": "无法识别目标模型时使用，输出清晰的自然语言描述",
+      "supports_negative": false,
+      "supports_weight": false,
+      "separator": "，",
+      "style": "natural"
+    },
+    {
+      "key": "sd15_sdxl",
+      "label": "SD1.5 / SDXL",
+      "description": "英文短语与标签，英文逗号分隔，支持权重语法与负向提示词",
+      "supports_negative": true,
+      "supports_weight": true,
+      "separator": ", ",
+      "style": "tags"
+    },
+    {
+      "key": "flux_flux2",
+      "label": "FLUX / FLUX.2",
+      "description": "自然语言描述，重要元素靠前，不生成负向提示词",
+      "supports_negative": false,
+      "supports_weight": false,
+      "separator": " ",
+      "style": "natural"
+    }
+  ],
+  "source_labels": {
+    "builtin": "内置",
+    "manual": "手动",
+    "auto": "自动学习",
+    "reverse_metadata": "元数据恢复",
+    "reverse_vision": "视觉反推"
+  },
+  "sort_options": [
+    { "key": "recommended", "label": "推荐" },
+    { "key": "recent", "label": "最近新增" },
+    { "key": "recent_used", "label": "最近使用" },
+    { "key": "most_used", "label": "使用最多" }
+  ]
+}

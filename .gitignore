@@ -1,0 +1,34 @@
+# 运行态数据（可重建副本，不入版本库）
+data/
+static/gallery/
+tmp/
+*.db
+*.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+
+# 环境
+.env
+
+# 模型 / 大文件
+*.gguf
+*.safetensors
+*.ckpt
+*.part
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/
+
+# CoAgent 本地产物（影子仓库在 ~/.coagent，不入库）
+.coagent/.local/
+
+# WorkBuddy 本地记忆（个人笔记，不入库）
+.workbuddy/memory/
