@@ -8,3 +8,4 @@
 {"ts":"2026-09-10T11:55:34.692Z","user":"qinsu","agent":"workbuddy","kind":"claim","text":"认领 core：db 迁移幂等性改造","area":"core"}
 {"ts":"2026-09-10T11:56:52.447Z","user":"qinsu","agent":"workbuddy","kind":"release","text":"释放 core","area":"core"}
 {"ts":"2026-09-10T16:25:19.213Z","user":"qinsu","agent":"workbuddy","kind":"release","text":"释放 comic","area":"comic"}
+{"ts":"2026-09-10T16:25:43.688Z","user":"qinsu","agent":"workbuddy","kind":"release","text":"释放 core","area":"core"}
