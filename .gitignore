@@ -1,9 +1,13 @@
-# 运行态数据（可重建副本，不入版本库）
-data/
+# 运行态数据（生成的图片/缓存不入版本库）
+# 注意：data/ 下混有 650+ 张生成的漫画图，故不能整个目录放开，
+# 只精确放行主库 aibar.db；SQLite 的 -shm/-wal 是瞬态文件，不入库。
+data/*
+!data/aibar.db
+*.db-shm
+*.db-wal
+*.db-journal
 static/gallery/
 tmp/
-*.db
-*.db-journal
 
 # Python
 __pycache__/
@@ -32,3 +36,6 @@ venv/
 
 # WorkBuddy 本地记忆（个人笔记，不入库）
 .workbuddy/memory/
+
+# Claude Code 机器本地配置（含本机绝对路径，由 coagent join 自动生成）
+.claude/settings.local.json
