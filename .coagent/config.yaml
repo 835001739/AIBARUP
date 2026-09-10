@@ -1,5 +1,5 @@
 project: aibarup
-remote: /Users/qinsu/.coagent/remotes/aibarup.git
-branch: main
+remote: git@github.com:835001739/AIBARUP.git
+branch: coagent
 poll_interval_sec: 30
 default_ttl_hours: 4
