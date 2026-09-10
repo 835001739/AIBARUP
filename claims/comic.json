@@ -1,0 +1,10 @@
+{
+  "area": "comic",
+  "owner": "lisi",
+  "agent": "claude-code",
+  "session": "0261392a",
+  "reason": "Request G 分镜工作流",
+  "claimed_at": "2026-09-10T16:45:08.816Z",
+  "expires_at": "2026-09-10T20:45:08.816Z",
+  "base_commit": "e7cfd175a7f51336664f8a2c22c5ca24002e1b11"
+}
