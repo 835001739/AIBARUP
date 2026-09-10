@@ -4,3 +4,4 @@
 {"ts":"2026-09-10T11:54:54.256Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[convention] 统一 API 契约 ok/fail + AIBARError","ref":"2026-09-10-统一-api-契约-ok-fail-aibarerror"}
 {"ts":"2026-09-10T11:54:55.734Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[gotcha] 日志禁止出现提示词正文/API Key/本机绝对路径","ref":"2026-09-10-日志禁止出现提示词正文-api-key-本机绝对路径"}
 {"ts":"2026-09-10T11:54:57.167Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[decision] 前端固定为无构建步骤的原生 HTML/CSS/JS","ref":"2026-09-10-前端固定为无构建步骤的原生-html-css-js"}
+{"ts":"2026-09-10T11:54:58.635Z","user":"qinsu","agent":"workbuddy","kind":"kb_write","text":"[gotcha] 业务包之间禁止互相 import","ref":"2026-09-10-业务包之间禁止互相-import"}
