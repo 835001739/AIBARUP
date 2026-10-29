@@ -21,6 +21,10 @@
       title: '工作流',
       desc: 'ComfyUI 工作流归档，可检索节点与提示词并下载原始 JSON'
     },
+    'ai-video': {
+      title: 'AI 视频工作台',
+      desc: '从项目阶段、资产与场景镜头出发，管理短剧生成、口型与质检进度'
+    },
     gallery: {
       title: '画廊',
       desc: '按时间浏览生成产物，查看提示词、参数与关联工作流'
@@ -55,11 +59,15 @@
     },
     videopaint: {
       title: '视频转绘',
-      desc: '把视频逐帧拆成骨架，用参考图锁脸 + 骨架控姿，逐帧重绘成统一风格，并落进组图连播'
+      desc: '把视频逐帧拆成骨架，用 Z-Image Turbo + Fun ControlNet 控姿重绘，并落进组图连播'
+    },
+    game: {
+      title: '游戏工作台',
+      desc: '载入 3D 动作素材，在动作库预览，拖入时间轴做调速与非破坏修剪，导出 MP4 或八方向 PNG 序列'
     }
   };
 
-  var ORDER = ['studio', 'workflows', 'gallery', 'cases', 'models', 'logs', 'comic', 'actors', 'groups', 'video', 'videopaint'];
+  var ORDER = ['studio', 'workflows', 'ai-video', 'gallery', 'cases', 'models', 'logs', 'comic', 'actors', 'groups', 'video', 'videopaint', 'game'];
   var DEFAULT_TAB = 'studio';
 
   var COUNT_KEYS = {
@@ -166,6 +174,13 @@
       if (AIBAR.videopaint && AIBAR.videopaint.onEnter) {
         try {
           AIBAR.videopaint.onEnter(next);
+        } catch (err) {
+          /* 同上 */
+        }
+      }
+      if (AIBAR.aiVideo && AIBAR.aiVideo.onEnter) {
+        try {
+          AIBAR.aiVideo.onEnter(next);
         } catch (err) {
           /* 同上 */
         }
@@ -427,6 +442,11 @@
     }
     try {
       AIBAR.videopaint.init();
+    } catch (err) {
+      /* 同上 */
+    }
+    try {
+      AIBAR.aiVideo.init();
     } catch (err) {
       /* 同上 */
     }

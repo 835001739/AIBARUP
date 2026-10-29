@@ -53,6 +53,23 @@ if _ORIGINAL_MKDIR.__module__ != __name__:
 # ---------------------------------------------------------------- 数据库隔离
 
 
+@pytest.fixture(autouse=True)
+def _isolate_ai_provider(monkeypatch):
+    """测试默认不连真实本地模型。
+
+    ``.env`` 在开发机上可能已启用 Ollama；若测试继承该配置，凡未显式
+    monkeypatch 的用例都会真的发请求，导致慢、依赖环境、甚至偶发超时。
+    这里统一回到「未启用」，需要 AI 的用例再自行打开。
+    """
+    from config import Config
+
+    monkeypatch.setattr(Config, "AI_PROVIDER_ENABLED", False)
+    monkeypatch.setattr(Config, "AI_PROVIDER_ENDPOINT", "")
+    monkeypatch.setattr(Config, "AI_PROVIDER_MODEL", "")
+    monkeypatch.setattr(Config, "AI_PROVIDER_AUTO_MODEL", False)
+    yield
+
+
 @pytest.fixture
 def isolated_db(tmp_path, monkeypatch):
     """把数据库与运行期目录重定向到 tmp_path，返回数据目录路径。

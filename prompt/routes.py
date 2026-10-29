@@ -15,7 +15,7 @@ from typing import Any
 from flask import Blueprint, current_app, request
 
 from core.db import dumps, execute, json_field, now, query_all, query_one
-from core import errors
+from core import errors, llm
 from core.errors import AIBARError
 from core.logging_setup import get_logger, safe_log
 from core.responses import from_exception, ok
@@ -185,6 +185,40 @@ def prompts_expand_route():
         duration_ms=result.get("duration_ms", 0),
         status="ok",
         out_len=len(result.get("expanded_positive", "")),
+    )
+    return ok(result)
+
+
+# ---------------------------------------------------------------- 本地 GPT 连接
+
+
+@bp.get("/prompts/ai-provider/status")
+def prompts_ai_provider_status_route():
+    """查看本地 GPT 配置与连通性；``?probe=1`` 时额外读取 ``/v1/models``。"""
+    probe = _to_bool(request.args.get("probe"), False)
+    status = llm.provider_status(probe=probe)
+    safe_log(
+        logger,
+        logging.INFO,
+        "ai_provider_status",
+        status="ok" if status.get("reachable") else "unreachable",
+        error_code=status.get("error_code", ""),
+        model_source=status.get("model_source", ""),
+    )
+    return ok(status)
+
+
+@bp.post("/prompts/ai-provider/test")
+def prompts_ai_provider_test_route():
+    """完整自检：列出模型并发一条极短对话，验证本地 GPT 推理链路。"""
+    result = llm.provider_test()
+    safe_log(
+        logger,
+        logging.INFO,
+        "ai_provider_test",
+        status="ok" if result.get("chat_ok") else "failed",
+        error_code=result.get("error_code", ""),
+        latency_ms=result.get("chat_latency_ms", 0),
     )
     return ok(result)
 

@@ -101,6 +101,8 @@ test('后端注册了视频转绘的全部路由', () => {
     "/jobs/<int:job_id>/frames/<int:order_idx>/editor-link",
     "/jobs/<int:job_id>/frames/<int:order_idx>/flux2-workflow-graph",
     "/jobs/<int:job_id>/frames/<int:order_idx>/flux2-editor-link",
+    "/jobs/<int:job_id>/frames/<int:order_idx>/zimage-workflow-graph",
+    "/jobs/<int:job_id>/frames/<int:order_idx>/zimage-editor-link",
     '/reference-upload'
   ].forEach((rule) => {
     assert.ok(ROUTES.includes('"' + rule + '"'), '缺少路由：' + rule);
@@ -194,6 +196,42 @@ test('FLUX.2 深链接 target 指向正向提示词节点 4', () => {
     'editor-link 的 graph_url 必须指向 flux2-workflow-graph 路由');
 });
 
+test('Z-Image 工作流按钮与另外两条姿势链并列', () => {
+  assert.ok(VIDEOPAINT_JS.includes('frameZImageBtn(f)'),
+    '帧卡片 actions 应挂 frameZImageBtn');
+  assert.ok(VIDEOPAINT_JS.includes('openFrameZImageWorkflow('),
+    '应定义 openFrameZImageWorkflow 并接线到按钮');
+  assert.ok(VIDEOPAINT_JS.includes("'/api/videopaint/jobs/' + jobId + '/frames/' + orderIdx + '/zimage-editor-link'"),
+    'openFrameZImageWorkflow 应请求 zimage-editor-link 路由');
+  assert.ok(VIDEOPAINT_JS.includes("'Z-Image'"), '按钮文案应为“Z-Image”');
+  assert.ok(ROUTES.includes('def frame_zimage_workflow_graph('), 'routes.py 应定义 Z-Image graph 路由');
+  assert.ok(ROUTES.includes('def frame_zimage_editor_link('), 'routes.py 应定义 Z-Image editor-link 路由');
+  assert.ok(ROUTES.includes('service.build_frame_zimage_ui_graph('), 'graph 路由应调用 Z-Image service 构图');
+  assert.ok(ROUTES.includes('service.frame_zimage_editor_link('), 'editor-link 路由应调用 Z-Image service 函数');
+});
+
+test('Z-Image 深链接 target 指向正向提示词节点 5', () => {
+  const SVC = fs.readFileSync(path.join(__dirname, '..', '..', 'videopaint', 'service.py'), 'utf8');
+  const seg = SVC.slice(SVC.indexOf('def frame_zimage_editor_link('));
+  assert.ok(seg.includes('target="5"'),
+    'Z-Image 工作流中正向 CLIPTextEncode 节点 id 是 5');
+  assert.ok(seg.includes('zimage-workflow-graph'),
+    'Z-Image editor-link 必须指向 zimage-workflow-graph 路由');
+});
+
+test('页面批量重绘明确使用 Z-Image 参数而非 SDXL 参数', () => {
+  const SVC = fs.readFileSync(path.join(__dirname, '..', '..', 'videopaint', 'service.py'), 'utf8');
+  const generate = SVC.slice(SVC.indexOf('def generate('), SVC.indexOf('# ----------------------------------------------------------------------------- 工作流按钮'));
+  assert.ok(generate.includes('videopaint_zimage.build_zimage_pose_workflow('),
+    'generate 必须调用 Z-Image 构图器');
+  assert.ok(!generate.includes('comic_pose.build_pose_workflow('),
+    'generate 不得继续调用 SDXL 姿势工作流');
+  assert.ok(VIDEOPAINT_JS.includes("'③ Z-Image 重绘'"), '主流水线应明确标注 Z-Image');
+  assert.ok(VIDEOPAINT_JS.includes("'8', 'steps', true"), '新建任务应锁定 Z-Image 8 步参数');
+  assert.ok(VIDEOPAINT_JS.includes("'1.0', 'cfg', true"), '新建任务应锁定 Z-Image CFG 1.0');
+  assert.ok(VIDEOPAINT_JS.includes("'0.8', 'controlnet_strength'"), '新建任务应使用 Z-Image 姿势强度 0.8');
+});
+
 test('删除走 ui.confirm 二次确认', () => {
   assert.ok(VIDEOPAINT_JS.includes('ui().confirm('), 'doDelete 应调用 ui().confirm');
   assert.ok(VIDEOPAINT_JS.includes("danger: true"), '删除确认应为危险操作');
@@ -212,6 +250,21 @@ test('视频转绘专用样式齐全（缺一个容器/按钮就裸奔）', () =
   ].forEach((cls) => {
     assert.ok(PAGES_CSS.includes(cls + ' {'), '缺少样式：' + cls);
   });
+});
+
+test('逐帧预览在窄窗口自动换行且图片不得撑破卡片', () => {
+  assert.match(PAGES_CSS,
+    /\.vp-frames\s*\{[^}]*repeat\(auto-fit,\s*minmax\(min\(100%,\s*320px\),\s*1fr\)\)/s,
+    '帧卡片应以 320px 为可读下限并在窄窗口自动换行');
+  assert.match(PAGES_CSS,
+    /\.vp-frame-card\s*\{[^}]*min-width:\s*0[^}]*max-width:\s*100%[^}]*overflow:\s*hidden/s,
+    '帧卡片应允许收缩并兜底隐藏越界内容');
+  assert.match(PAGES_CSS,
+    /\.vp-frame-imgs\s*\{[^}]*repeat\(2,\s*minmax\(0,\s*1fr\)\)[^}]*min-width:\s*0/s,
+    '图片双栏必须显式允许缩小，避免图片固有宽度撑破网格');
+  assert.match(PAGES_CSS,
+    /\.vp-thumb-img\s*\{[^}]*max-width:\s*100%[^}]*object-fit:\s*contain/s,
+    '缩略图应限制在格子内并完整显示');
 });
 
 test('复用公共类（form-grid-2 / card-grid / badge 修饰类）已存在', () => {

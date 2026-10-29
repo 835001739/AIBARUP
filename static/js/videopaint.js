@@ -1,6 +1,6 @@
 /* ============================================================
    AIBAR · 视频转绘（M16）
-   - 选源视频 + 参考图 + 提示词与生成参数，新建一个「视频转绘」任务
+   - 选源视频 + 提示词与生成参数，新建一个 Z-Image「视频转绘」任务
    - 流水线四步：①抽帧准备(prepare) ②动作拆解(pose，提骨架) ③逐帧重绘(generate) ④去背景(nobg) ⑤拼组图(sheet)
    - 逐帧预览：源帧 → 骨架 → 生成图 → 去背景图 并排对比
    - 生成的图直接写回「组图管理」（后端已做），这里提供「查看组图」一键跳转与「连播生成序列」
@@ -174,7 +174,7 @@
     body.appendChild(title);
 
     var meta = ui().el('p', 'entry-text text-tertiary clamp-1');
-    meta.textContent = '源视频 #' + (j.clip_id || '?') + ' · ' + (j.frame_count || 0) + ' 帧 · 骨架 ' + (j.pose_count || 0) + ' · 生成 ' + (j.done_count || 0);
+    meta.textContent = 'Z-Image · 源视频 #' + (j.clip_id || '?') + ' · ' + (j.frame_count || 0) + ' 帧 · 骨架 ' + (j.pose_count || 0) + ' · 生成 ' + (j.done_count || 0);
     body.appendChild(meta);
 
     var statusRow = ui().el('div', 'shot-card-head vp-status-row');
@@ -212,7 +212,7 @@
     var body = ui().el('div', 'form-stack vp-create');
 
     var tip = ui().el('p', 'entry-text text-tertiary');
-    tip.textContent = '把一个已抽帧的视频拆成逐帧骨架，再用参考图锁脸 + 骨架控姿势，逐帧重绘成统一风格。';
+    tip.textContent = '把已抽帧的视频拆成逐帧骨架，再用 Z-Image Turbo + Fun ControlNet 2.1 按骨架逐帧重绘。';
     body.appendChild(tip);
 
     // ── 源视频 ──
@@ -231,7 +231,7 @@
     var fileInput = ui().el('input', 'input');
     fileInput.type = 'file';
     fileInput.accept = 'image/png,image/jpeg,image/webp';
-    body.appendChild(ui().fieldRow('参考图（上传）', fileInput, '用于锁脸 / 控风格，上传后会落到服务端'));
+    body.appendChild(ui().fieldRow('参考图（上传，可选）', fileInput, '供手动 SDXL / FLUX.2 工作流使用；Z-Image 批量重绘使用提示词与骨架'));
 
     var pathInput = ui().el('input', 'input');
     pathInput.placeholder = '/Users/.../ref.png（也可填本机已存在的图片绝对路径）';
@@ -261,11 +261,9 @@
 
     var grid2 = ui().el('div', 'form-grid-2');
     grid2.appendChild(numField('分辨率(pose)', '512', 'pose_resolution'));
-    grid2.appendChild(numField('步数 steps', '28', 'steps'));
-    grid2.appendChild(numField('CFG', '6.5', 'cfg'));
-    grid2.appendChild(numField('控制强度', '1.15', 'controlnet_strength'));
-    grid2.appendChild(numField('IPAdapter 权重', '0.85', 'ipadapter_weight'));
-    grid2.appendChild(numField('FaceID 权重', '0.85', 'faceidv2_weight'));
+    grid2.appendChild(numField('步数 steps（Z-Image）', '8', 'steps', true));
+    grid2.appendChild(numField('CFG（Z-Image）', '1.0', 'cfg', true));
+    grid2.appendChild(numField('姿势控制强度', '0.8', 'controlnet_strength'));
     grid2.appendChild(numField('宽', '896', 'width'));
     grid2.appendChild(numField('高', '1152', 'height'));
     grid2.appendChild(numField('基础种子', '0', 'base_seed'));
@@ -303,8 +301,6 @@
               steps: intVal(body.querySelector('[data-k="steps"]')),
               cfg: floatVal(body.querySelector('[data-k="cfg"]')),
               controlnet_strength: floatVal(body.querySelector('[data-k="controlnet_strength"]')),
-              ipadapter_weight: floatVal(body.querySelector('[data-k="ipadapter_weight"]')),
-              faceidv2_weight: floatVal(body.querySelector('[data-k="faceidv2_weight"]')),
               width: intVal(body.querySelector('[data-k="width"]')),
               height: intVal(body.querySelector('[data-k="height"]')),
               base_seed: intVal(body.querySelector('[data-k="base_seed"]')),
@@ -341,11 +337,15 @@
   }
 
   // 数字字段：在 input 上挂 data-k，提交时按 key 取数
-  function numField(label, def, key) {
+  function numField(label, def, key, locked) {
     var input = ui().el('input', 'input');
     input.type = 'number';
     input.value = def;
     input.setAttribute('data-k', key);
+    if (locked) {
+      input.disabled = true;
+      input.title = 'Z-Image Turbo 蒸馏工作流固定参数';
+    }
     return ui().fieldRow(label, input);
   }
 
@@ -414,10 +414,10 @@
     if (job.negative) cfgText.appendChild(ui().el('div', 'text-tertiary clamp-2', '负向：' + job.negative));
     var paramLine = ui().el('div', 'text-tertiary vp-param-line');
     var configuredControl = parseFloat(job.controlnet_strength);
-    var effectiveControl = isNaN(configuredControl) ? 1.15 : Math.max(1.15, configuredControl);
-    paramLine.textContent = '骨架 ' + (job.pose_mode || 'dwpose') + ' · ' + (job.width || '?') + '×' + (job.height || '?')
-      + ' · steps ' + (job.steps || '?') + ' · cfg ' + (job.cfg || '?')
-      + ' · 控制 ' + effectiveControl + '（严格模式） · IP ' + (job.ipadapter_weight || '?')
+    var effectiveControl = isNaN(configuredControl) ? 0.8 : Math.min(1.0, Math.max(0.8, configuredControl));
+    paramLine.textContent = 'Z-Image Turbo · Fun ControlNet 2.1 · 骨架 ' + (job.pose_mode || 'dwpose') + ' · ' + (job.width || '?') + '×' + (job.height || '?')
+      + ' · steps 8 · cfg 1.0'
+      + ' · 控制 ' + effectiveControl + '（严格模式）'
       + ' · 抽帧 fps ' + (job.fps || '?') + ' / 最多 ' + (job.max_frames || '?') + ' 帧';
     cfgText.appendChild(paramLine);
     cfg.appendChild(cfgText);
@@ -431,7 +431,7 @@
 
     pipeline.appendChild(stageBtn(job, 'prepare', '① 抽帧准备', '从视频抽帧并建组图', true));
     pipeline.appendChild(stageBtn(job, 'pose', '② 动作拆解', '逐帧提骨架（动作拆解）', hasFrames));
-    pipeline.appendChild(stageBtn(job, 'generate', '③ 逐帧重绘', '参考图锁脸 + 骨架控姿', hasPose));
+    pipeline.appendChild(stageBtn(job, 'generate', '③ Z-Image 重绘', 'Fun ControlNet 按骨架控姿', hasPose));
     pipeline.appendChild(stageBtn(job, 'nobg', '④ 去背景', '生成透明序列帧', hasGen));
     pipeline.appendChild(stageBtn(job, 'sheet', '⑤ 拼组图', '拼成一张序列帧大图', hasGen));
     h.appendChild(pipeline);
@@ -451,6 +451,7 @@
       var wfOrder = firstPosed ? firstPosed.order_idx : frames[0].order_idx;
       actions.appendChild(btn('secondary', 'workflow', '打开工作流', function () { openFrameWorkflow(job.id, wfOrder); }, '在 ComfyUI 中打开某帧工作流（SDXL + ControlNet + IPAdapter）'));
       actions.appendChild(btn('secondary', 'sparkles', '打开 FLUX.2 工作流', function () { openFrameFlux2Workflow(job.id, wfOrder); }, '用 FLUX.2 Klein 打开某帧工作流（单模型 + 双 ReferenceLatent，4 步蒸馏）'));
+      actions.appendChild(btn('secondary', 'sparkles', '打开 Z-Image 工作流', function () { openFrameZImageWorkflow(job.id, wfOrder); }, '用 Z-Image Turbo + Fun ControlNet 2.1 按骨架控姿，8 步蒸馏出图'));
     }
     h.appendChild(actions);
 
@@ -492,7 +493,7 @@
     var longTask = (stage === 'prepare' || stage === 'pose' || stage === 'generate');
     var payload = (stage === 'generate' && (job.status === 'done' || job.status === 'partial' || job.status === 'failed'))
       ? { force: true } : {};
-    // 严格骨架模式会在出图后复检姿态，低分帧最多增强控制重试一次。
+    // Z-Image 严格骨架模式会在出图后复检姿态，低分帧最多增强控制重试一次。
     var timeout = stage === 'generate' ? 3600000 : (longTask ? 600000 : undefined);
     api().post(endpoint, payload, timeout ? { timeout: timeout } : {}).then(function (r) {
       ui().setBusy(button, false);
@@ -543,10 +544,11 @@
       card.appendChild(qa);
     }
 
-    // 工作流按钮：SDXL 姿态链路 与 FLUX.2 Klein 链路 并列，同一帧二选一打开
+    // 三条姿势链并列：SDXL、FLUX.2 Klein、Z-Image Turbo
     var fActions = ui().el('div', 'vp-frame-actions');
     fActions.appendChild(frameWorkflowBtn(f));
     fActions.appendChild(frameFlux2Btn(f));
+    fActions.appendChild(frameZImageBtn(f));
     card.appendChild(fActions);
 
     if (f.error_message) {
@@ -584,6 +586,19 @@
     return b;
   }
 
+  // Z-Image Turbo 使用 Fun ControlNet 2.1；已提取骨架以 none 预处理直通，不能再次跑 DWPose
+  function frameZImageBtn(f) {
+    var hasPose = !!f.pose_path_url;
+    var b = btn(
+      'ghost', 'sparkles', 'Z-Image',
+      function () { openFrameZImageWorkflow(f.job_id, f.order_idx); },
+      hasPose ? '用 Z-Image Turbo 打开此帧姿势工作流：骨架直通 Fun ControlNet 2.1，8 步 / CFG 1.0'
+        : '请先执行 pose / generate 生成骨架'
+    );
+    if (!hasPose) b.disabled = true;
+    return b;
+  }
+
   // 调后端 editor-link 路由，拿到 ComfyUI 深链接后新开标签页（姿态工作流）
   function openFrameWorkflow(jobId, orderIdx) {
     openWorkflowLink('/api/videopaint/jobs/' + jobId + '/frames/' + orderIdx + '/editor-link', '打开工作流失败');
@@ -592,6 +607,11 @@
   // 同上，但走 FLUX.2 Klein 工作流（M17）
   function openFrameFlux2Workflow(jobId, orderIdx) {
     openWorkflowLink('/api/videopaint/jobs/' + jobId + '/frames/' + orderIdx + '/flux2-editor-link', '打开 FLUX.2 工作流失败');
+  }
+
+  // Z-Image Turbo + Fun ControlNet 姿势控制工作流
+  function openFrameZImageWorkflow(jobId, orderIdx) {
+    openWorkflowLink('/api/videopaint/jobs/' + jobId + '/frames/' + orderIdx + '/zimage-editor-link', '打开 Z-Image 工作流失败');
   }
 
   // 深链接公共逻辑：GET 后端 → 取 url → 新开标签页（桥接未装时给 warning 而非拦下来）

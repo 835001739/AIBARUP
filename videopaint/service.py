@@ -1,10 +1,10 @@
-"""M16 视频转绘：视频 → 逐帧提姿态（DWPose）→ ComfyUI 逐帧重绘 → 组图 + 无背景序列帧。
+"""M16 视频转绘：视频 → 逐帧提姿态（DWPose）→ Z-Image 逐帧重绘 → 组图 + 无背景序列帧。
 
 两段式流水线（方案 A）：
   prepare  : 从源视频抽帧 → 在「组图管理」建一个 shot_group 与 N 个 shot_frame
              → 在 video_paint_frames 登记 N 行（pending）
   pose     : 每帧上传 ComfyUI → DWPreprocessor/OpenposePreprocessor → 下载骨架图（动作拆解）
-  generate : 每帧把骨架图 + 参考图喂给 build_pose_workflow → 出图 → 写回 shot_frame（组图管理即可播放）
+  generate : 每帧把骨架图喂给 Z-Image Turbo + Fun ControlNet → 出图 → 写回 shot_frame（组图管理即可播放）
   nobg     : 对生成图做去背景（连通抠图/颜色键控）→ 透明序列帧
   sheet    : 把生成图（或去背景图）拼成一张组图 contact sheet
 
@@ -37,6 +37,7 @@ from comic import workflow_ui as comic_workflow_ui
 from reverse import comfyui_client
 import video.service as video_service
 from sync import comfyui_link
+from videopaint import zimage as videopaint_zimage
 
 logger = get_logger("aibar.videopaint")
 
@@ -49,11 +50,14 @@ NOBG_NAME_FMT = "frame_%04d.png"
 _POSE_NODE = {"dwpose": "DWPreprocessor", "openpose": "OpenposePreprocessor"}
 
 # 「骨架控姿」不能只靠一句自然语言承诺：输入控制图、文本构图和最终产物都要有约束。
-# 这里的默认值偏向动作准确率；外观仍由用户提示词与 IPAdapter 决定。
+# SDXL 手动工作流继续使用下列强度；页面批量重绘则使用 Z-Image 专用强度。
 STRICT_POSE_MIN_STRENGTH = 1.15
 STRICT_POSE_RETRY_STRENGTH = 1.35
+ZIMAGE_POSE_MIN_STRENGTH = videopaint_zimage.DEFAULT_CONTROL_STRENGTH
+ZIMAGE_POSE_RETRY_STRENGTH = 1.0
 STRICT_POSE_MAX_ATTEMPTS = 2
 STRICT_POSE_PASS_SCORE = 0.24
+ZIMAGE_FRAME_TIMEOUT_SECONDS = 600.0
 STRICT_POSE_POSITIVE = (
     "solo, one person, single character, full body, head-to-toe, entire body visible, "
     "dynamic action pose, exact pose match, clear limbs, simple single-scene composition"
@@ -168,7 +172,7 @@ def create_job(payload: dict) -> dict:
       prompt/negative 正向/负向提示词
       reference_path  参考图本地绝对路径（可选，创建时上传到 ComfyUI input）
       reference_name  已在 ComfyUI input 的参考图文件名（与 reference_path 二选一）
-      其余为生成参数（checkpoint/controlnet/pose_mode/steps/cfg/宽高/种子/抽帧参数…）
+      其余为生成参数（pose_mode/Z-Image 控制强度/宽高/种子/抽帧参数…）
     """
     body = payload or {}
     clip_id = _opt_int(body.get("clip_id"))
@@ -192,9 +196,9 @@ def create_job(payload: dict) -> dict:
         "controlnet": _text(body.get("controlnet")).strip(),
         "pose_mode": _text(body.get("pose_mode")).strip() or "dwpose",
         "pose_resolution": _opt_int(body.get("pose_resolution"), 512),
-        "steps": _opt_int(body.get("steps"), comic_pose.DEFAULT_STEPS),
-        "cfg": _opt_float(body.get("cfg"), comic_pose.DEFAULT_CFG),
-        "controlnet_strength": _opt_float(body.get("controlnet_strength"), STRICT_POSE_MIN_STRENGTH),
+        "steps": _opt_int(body.get("steps"), videopaint_zimage.DEFAULT_STEPS),
+        "cfg": _opt_float(body.get("cfg"), videopaint_zimage.DEFAULT_CFG),
+        "controlnet_strength": _opt_float(body.get("controlnet_strength"), ZIMAGE_POSE_MIN_STRENGTH),
         "ipadapter_weight": _opt_float(body.get("ipadapter_weight"), comic_pose.DEFAULT_IPADAPTER_WEIGHT),
         "faceidv2_weight": _opt_float(body.get("faceidv2_weight"), comic_pose.DEFAULT_FACEIDV2_WEIGHT),
         "width": _opt_int(body.get("width"), comic_pose.DEFAULT_WIDTH),
@@ -418,6 +422,13 @@ def _effective_pose_strength(value: Any, attempt: int = 0) -> float:
     return max(floor, configured)
 
 
+def _effective_zimage_strength(value: Any, attempt: int = 0) -> float:
+    """把历史 SDXL 任务的高控制值安全映射到 Z-Image 姿势强度。"""
+    configured = _opt_float(value, ZIMAGE_POSE_MIN_STRENGTH)
+    floor = ZIMAGE_POSE_RETRY_STRENGTH if attempt > 0 else ZIMAGE_POSE_MIN_STRENGTH
+    return min(1.0, max(floor, configured))
+
+
 def _assert_pose_control_graph(graph: dict[str, Any], pose_image: str) -> None:
     """生成前断言骨架确实贯穿 LoadImage → ControlNet → KSampler。
 
@@ -637,15 +648,6 @@ def generate(job_id: int, cancel=None, force: bool = False) -> dict:
     if not ok:
         raise AIBARError("unavailable", "ComfyUI 不可达，请先启动")
 
-    # 参考图：优先用已登记的 ComfyUI 文件名，否则从本地 reference.png 上传一次
-    ref_name = job.get("reference_name") or ""
-    if not ref_name and job.get("reference_rel"):
-        ref_path = Path(Config.DATA_DIR) / job["reference_rel"]
-        if ref_path.exists():
-            ref_name = "aibar_vp_ref_%d.png" % int(job_id)
-            comfyui_client.upload_image(str(ref_path), ref_name, overwrite=True)
-            db.execute("UPDATE video_paint_jobs SET reference_name=? WHERE id=?", (ref_name, int(job_id)))
-
     gdir = job_gen_dir(job_id)
     gdir.mkdir(parents=True, exist_ok=True)
     frames = list_frames(job_id)
@@ -698,24 +700,20 @@ def generate(job_id: int, cancel=None, force: bool = False) -> dict:
                 break
             attempts = attempt + 1
             attempt_seed = seed + attempt * 7919
-            graph = comic_pose.build_pose_workflow(
-                reference_image=ref_name,
+            graph = videopaint_zimage.build_zimage_pose_workflow(
                 pose_image=pose_name,
                 positive=positive,
                 negative=negative,
-                checkpoint=job["checkpoint"] or comic_pose.DEFAULT_CHECKPOINT,
-                controlnet=job["controlnet"] or comic_pose.DEFAULT_CONTROLNET,
                 seed=attempt_seed,
-                steps=job["steps"],
-                cfg=job["cfg"],
                 width=job["width"],
                 height=job["height"],
-                controlnet_strength=_effective_pose_strength(job["controlnet_strength"], attempt),
-                ipadapter_weight=job["ipadapter_weight"],
-                faceidv2_weight=job["faceidv2_weight"],
+                strength=_effective_zimage_strength(job["controlnet_strength"], attempt),
             )
-            _assert_pose_control_graph(graph, pose_name)
-            data, code, msg = comic_runner.run_graph_once(graph, timeout=300.0, cancel=cancel)
+            # 构图函数内部带硬校验；再显式调用一次，防止未来被替换为未校验实现。
+            videopaint_zimage.assert_zimage_pose_workflow(graph, pose_name)
+            data, code, msg = comic_runner.run_graph_once(
+                graph, timeout=ZIMAGE_FRAME_TIMEOUT_SECONDS, cancel=cancel,
+            )
             if data is None:
                 last_message = msg or code
                 continue
@@ -958,6 +956,48 @@ def frame_flux2_editor_link(job_id: int, order_idx: int) -> dict[str, Any]:
         prompt=job.get("prompt") or "",
         negative=job.get("negative") or "",
         target="4",  # 正向提示词节点（build_flux2_workflow 中 CLIPTextEncode 的 id）
+    )
+
+
+# --------------------------------------------------------------- Z-Image Turbo · Fun ControlNet 姿势工作流
+def build_frame_zimage_ui_graph(job_id: int, order_idx: int) -> dict[str, Any]:
+    """为某帧构造 Z-Image Turbo 姿势控制的 UI 格式工作流。
+
+    Z-Image 使用独立的蒸馏采样参数（8 步 / CFG 1.0），骨架经过 ``none`` 预处理
+    原样进入 Fun ControlNet 2.1。参考图仍由公共前置上传，便于用户在 ComfyUI 中
+    手动扩展，但当前 Z-Image 姿势链只消费骨架与文本。
+    """
+    job, ref_name, pose_name, seed = _prepare_frame_workflow_inputs(job_id, order_idx)
+    positive, negative = _strict_pose_prompts(job)
+    api = videopaint_zimage.build_zimage_pose_workflow(
+        pose_image=pose_name,
+        positive=positive,
+        negative=negative,
+        seed=seed,
+        width=job["width"],
+        height=job["height"],
+        strength=videopaint_zimage.DEFAULT_CONTROL_STRENGTH,
+    )
+    ui = comic_workflow_ui.api_to_ui_graph(api)
+    return {"ui": ui, "ref_name": ref_name, "pose_name": pose_name, "seed": seed}
+
+
+def frame_zimage_editor_link(job_id: int, order_idx: int) -> dict[str, Any]:
+    """构造打开 ComfyUI 并载入本帧 Z-Image 姿势工作流的深链接。"""
+    build_frame_zimage_ui_graph(job_id, order_idx)
+    job = get_job(job_id) or {}
+    graph_url = "%s/api/videopaint/jobs/%s/frames/%s/zimage-workflow-graph" % (
+        comfyui_link.aibar_base(),
+        int(job_id),
+        int(order_idx),
+    )
+    name = "Z-Image转绘#%s 帧%s" % (int(job_id), int(order_idx))
+    return comfyui_link.build_editor_link_graph(
+        graph_url=graph_url,
+        name=name,
+        prompt=job.get("prompt") or "",
+        negative=job.get("negative") or "",
+        target="5",
     )
 
 

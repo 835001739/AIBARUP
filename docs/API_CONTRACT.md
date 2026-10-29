@@ -101,6 +101,46 @@ ComfyUI 未运行时以上接口**不得报错**，只返回 `running:false`。
 ```
 校验：空输入 / 仅标点 / 超过 2000 字符 / 未知 `intensity` → `400 invalid_input`，不调用引擎。
 
+### 本地 GPT 连接
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/prompts/ai-provider/status?probe=1` | 配置与连通性；`probe=1` 时读取 `/v1/models` |
+| POST | `/api/prompts/ai-provider/test` | 完整自检：模型列表 + 一条极短对话 |
+
+`status` / `test` 共同字段：
+```json
+{
+  "enabled": true,
+  "configured": true,
+  "endpoint": {"configured": true, "loopback": true, "label": "127.0.0.1:11434/v1", "host": "127.0.0.1", "port": 11434, "path": "/v1"},
+  "model": "qwen2.5:7b",
+  "model_source": "config|auto|",
+  "auto_model": true,
+  "api_key_configured": false,
+  "timeout_seconds": 120,
+  "max_tokens": 1024,
+  "reachable": true,
+  "models": ["qwen2.5:7b"],
+  "model_available": true,
+  "latency_ms": 12,
+  "error_code": "",
+  "error_message": "",
+  "hint": ""
+}
+```
+
+`test` 额外返回 `chat_ok`、`reply_len`、`chat_latency_ms`。
+
+错误码（均以 200 envelope 返回，属于连接状态而非请求失败）：
+
+- `provider_disabled` 未启用；`endpoint_missing` 没配端点；`model_missing` 没有可用模型；
+- `connection_refused` 服务没启动；`endpoint_not_found` 路径 404；`model_not_found` 模型名不存在；
+- `timeout` 推理超时；`proxy_error` 代理拦截；`auth_failed` 401/403；`rate_limited` 429；
+- `server_error` 5xx；`bad_response` 非 Chat Completions 结构；`empty_content` 空内容。
+
+隐私：不返回 API Key；非回环端点只显示「外部服务（地址已隐藏）」。
+
 ### 历史
 | 方法 | 路径 |
 |---|---|
@@ -823,5 +863,73 @@ body `cols`（列数，1–50，默认 5）/ `padding`（间距 0–50，默认 
 - `video_paint_frames.status`：`pending` / `posed` / `generating` / `done` / `failed`。
 - `generate` 把图写回 `comic.shot_frames.image_path` + `video_paint_frames.image_path`，组图管理即可直接连播。
 
+---
+
+## M19 · AI 视频创作工作台
+
+所有路径前缀为 `/api/ai-video`，只保存结构化元数据与受控相对引用，不返回本机绝对路径。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/meta` | 枚举、L0-L5 阶段、镜头状态、QC 字段 |
+| GET | `/projects` | 项目列表及场景/镜头/批准数聚合 |
+| POST | `/projects` | 新建项目 |
+| GET | `/projects/<id>` | 项目详情 |
+| PATCH | `/projects/<id>` | 更新项目 |
+| DELETE | `/projects/<id>` | 删除项目，并事务清理场景/镜头/资产 |
+| GET | `/projects/<id>/dashboard` | `{project,scenes:[{...,shots}],assets,stages,stats}` |
+| POST | `/projects/<id>/seed-template` | 空项目载入真人写实短剧 4 场 28 镜模板 |
+| POST | `/projects/<id>/scenes` | 新建场景 |
+| POST | `/scenes/<id>/shots` | 新建镜头 |
+| PATCH | `/shots/<id>` | 更新镜头状态、字段、参数快照与 QC |
+| POST | `/shots/<id>/frames/<start\|end>/asset` | 从项目资产图设置首/尾帧：`{image_id}` |
+| POST | `/shots/<id>/frames/<start\|end>/upload` | 上传本地图片作为首/尾帧（multipart，字段 `file`） |
+| POST | `/shots/<id>/frames/<start\|end>/generate` | 用镜头画面提示生成首/尾帧：`{prompt?,workflow?,seed?,randomize?}` |
+| DELETE | `/shots/<id>/frames/<start\|end>` | 清除首/尾帧 |
+| GET | `/shots/<id>/frames/<filename>` | 读取上传的首/尾帧图片 |
+| GET | `/asset-images/<image_id>/image` | 按资产图 ID 读取图片 |
+| POST | `/projects/<id>/assets` | 新建项目资产（可带提示词/工作流/种子） |
+| PATCH | `/assets/<id>` | 更新资产名称、描述、状态、提示词、工作流、种子、参考引用 |
+| DELETE | `/assets/<id>` | 删除资产 |
+| GET | `/workflows` | 可选出图工作流清单（名称/文件名/节点数/能力标记） |
+| POST | `/assets/<id>/generate` | 后台生成/重新生成单张资产图片，返回 `status=generating` |
+| POST | `/assets/<id>/generate-set` | 按多角度/表情生成一组图：`{preset:"angles"|"expressions"|"custom", labels?}` |
+| GET | `/assets/<id>/image` | 读取当前封面图（仅 `data/` 内受控路径） |
+| GET | `/assets/<id>/images` | 资产多图列表 `{items:[{id,label,image_url,seed,width,height}],total}` |
+| GET | `/assets/<id>/images/<image_id>/image` | 读取单张变体图 |
+| POST | `/assets/<id>/images/<image_id>/cover` | 把变体设为封面 |
+| DELETE | `/assets/<id>/images/<image_id>` | 删除变体及其文件 |
+
+资产出图请求体（全部可选）：
+```json
+{"workflow":"flux2_storyboard_aibar.json","prompt":"character reference sheet ...",
+ "negative":"blurry, low quality","seed":20261029,"randomize":false}
+```
+- 工作流优先级：请求体 > 资产 > 项目默认 > 最新**可出图**工作流。
+- 工作流清单每项带 `kind`（character/video/audio/reference/unsupported）、`character_ready`、`workflow_reason`；UI 默认只让角色资产选择 `character_ready=true` 的工作流。
+- `randomize=true` 换新种子；否则沿用资产已有种子，保证同一角色稳定。
+- 生成状态：`draft|generating|ready|locked|failed|archived`；`generating` 由系统维护。
+- 返回资产含 `image_url`、`status_label`、`image_count`、`metadata.width/height`、`error_message`、`last_generated_at`。
+- 多角度组固定 4 张（正面/四分之三侧/侧面/背面）；表情组固定 5 张（中性/微笑/愤怒/悲伤/惊讶）；`custom` 最多 8 个 label。
+- 一组图顺序生成，首张成功图自动成为封面；全部失败才把资产置为 `failed`。
+
+### 关键枚举
+
+- 项目状态：`planning|asset_building|production|review|done|paused`
+- 自动化等级：`L1|L2|L3`
+- 镜头状态：`pending|tts_ready|frame_draft|frame_approved|video_draft|auto_qc|human_review|approved|hq_render|done|rejected|needs_human`
+- 资产类型：`character|scene|prop|wardrobe|voice|style|music|sfx`
+- 资产状态：`draft|generating|ready|locked|failed|archived`（`generating`/`failed` 由系统维护）
+- 质量档位：`draft|preview|final`
+
+### 隐私与校验
+
+- `ref_path` 只允许资源 ID 或受控相对路径；以 `/` 开头、含盘符或 `..` 的值返回 `invalid_input`。
+- 项目可设置 `default_workflow` / `default_negative`；资产可覆盖 `workflow` / `prompt` / `negative` / `seed`。
+- 图片只通过受控图片路由读取，不返回本机绝对路径。
+- 首/尾帧引用格式：`asset-image:<image_id>` 或 `frame:<shot_id>:<filename>`；API 返回 `first_frame_url` / `last_frame_url`。
+- 镜头额外返回 `frame_status.start/end`：`{status,error,seed,workflow,started_at,finished_at}`，用于生成中/失败提示与轮询。
+- `snapshot`、`qc`、`continuity`、`metadata` 必须是 JSON 对象。
+- 同项目 `scene_code`、`shot_code` 不得重复；同项目同资产类型的 `asset_key` 不得重复。
 
 

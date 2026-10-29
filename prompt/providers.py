@@ -19,9 +19,8 @@ import logging
 import time
 from typing import Any
 
-import requests
-
 from config import CFG
+from core import llm
 from core.errors import AIBARError
 from core.logging_setup import get_logger, safe_log
 from core.textutil import sanitize_model_text
@@ -93,7 +92,7 @@ class OpenAICompatibleProvider:
     )
 
     def is_enabled(self) -> bool:
-        return bool(CFG.AI_PROVIDER_ENABLED and CFG.AI_PROVIDER_ENDPOINT and CFG.AI_PROVIDER_MODEL)
+        return llm.is_configured()
 
     def expand(
         self,
@@ -105,33 +104,17 @@ class OpenAICompatibleProvider:
     ) -> dict:
         if not CFG.AI_PROVIDER_ENABLED:
             raise ProviderError("provider_disabled", "AI 扩写服务未启用")
-        if not CFG.AI_PROVIDER_ENDPOINT or not CFG.AI_PROVIDER_MODEL:
-            raise ProviderError("provider_unconfigured", "AI 扩写服务未配置 endpoint 或 model")
-
-        payload = self._build_payload(original_prompt, profile, intensity, template_id)
-        headers = {"Content-Type": "application/json"}
-        if CFG.AI_PROVIDER_API_KEY:
-            headers["Authorization"] = f"Bearer {CFG.AI_PROVIDER_API_KEY}"
+        if not llm.is_configured():
+            raise ProviderError("provider_unconfigured", "本地 GPT 未配置端点")
 
         try:
-            response = requests.post(
-                f"{CFG.AI_PROVIDER_ENDPOINT.rstrip('/')}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=max(1, int(CFG.AI_PROVIDER_TIMEOUT or 60)),
+            raw_text = llm.chat(
+                self._build_messages(original_prompt, profile, intensity, template_id),
+                temperature=0,
             )
-        except requests.exceptions.Timeout:
-            raise ProviderError("provider_timeout", "AI 扩写服务请求超时")
-        except requests.exceptions.RequestException:
-            raise ProviderError("provider_offline", "AI 扩写服务连接失败")
+        except llm.LLMError as exc:
+            raise ProviderError(self._reason_code(exc), self._reason_text(exc))
 
-        status = int(getattr(response, "status_code", 0) or 0)
-        if status == 429:
-            raise ProviderError("provider_rate_limited", "AI 扩写服务触发限流")
-        if status >= 400:
-            raise ProviderError("provider_http_error", f"AI 扩写服务返回 HTTP {status}")
-
-        raw_text = self._extract_text(response)
         structured = self._parse_structure(raw_text)
         return self._to_result(
             structured, original_prompt, profile, intensity, template_id
@@ -139,13 +122,34 @@ class OpenAICompatibleProvider:
 
     # ---- 内部辅助
 
-    def _build_payload(
+    @staticmethod
+    def _reason_code(exc: llm.LLMError) -> str:
+        """把连接层错误码翻译成扩写层一直使用的稳定错误码。"""
+        if exc.code == "timeout":
+            return "provider_timeout"
+        if exc.code in ("connection_refused", "proxy_error", "request_failed"):
+            return "provider_offline"
+        if exc.code == "rate_limited":
+            return "provider_rate_limited"
+        if exc.code in ("provider_disabled",):
+            return "provider_disabled"
+        if exc.code in ("endpoint_missing", "model_missing", "model_not_found"):
+            return "provider_unconfigured"
+        if exc.code in ("bad_response", "empty_content"):
+            return "provider_bad_response"
+        return "provider_http_error"
+
+    @staticmethod
+    def _reason_text(exc: llm.LLMError) -> str:
+        return exc.message + (f"（{exc.hint}）" if exc.hint else "")
+
+    def _build_messages(
         self,
         original_prompt: str,
         profile: str,
         intensity: str,
         template_id: str | None,
-    ) -> dict:
+    ) -> list[dict[str, str]]:
         profile_meta = library.profile(profile)
         user_payload = {
             "original_prompt": original_prompt,
@@ -157,27 +161,10 @@ class OpenAICompatibleProvider:
             "intensity": intensity,
             "template_id": template_id or "",
         }
-        return {
-            "model": CFG.AI_PROVIDER_MODEL,
-            "temperature": 0,
-            "messages": [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
-            ],
-        }
-
-    def _extract_text(self, response: Any) -> str:
-        try:
-            data = response.json()
-        except (ValueError, AttributeError):
-            raise ProviderError("provider_bad_response", "AI 扩写服务返回不是合法 JSON")
-        try:
-            content = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
-            raise ProviderError("provider_bad_response", "AI 扩写服务返回结构不符合预期")
-        if not isinstance(content, str) or not content.strip():
-            raise ProviderError("provider_bad_response", "AI 扩写服务返回内容为空")
-        return sanitize_model_text(content, MAX_AI_TEXT_LEN)
+        return [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
+        ]
 
     def _parse_structure(self, raw_text: str) -> dict:
         text = raw_text.strip()

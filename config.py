@@ -103,6 +103,15 @@ class Config:
     COMFYUI_AUTOSTART = _bool("COMFYUI_AUTOSTART", True)
     COMFYUI_TIMEOUT = _float("COMFYUI_TIMEOUT", 3.0)
 
+    # ---- 游戏工作台（M18）----
+    # 内嵌的 XSXB Animation Director 用 fetch('/local-assets/animation-packs.json')
+    # 取动作库清单（根相对路径，与它在哪个子目录下被托管无关）。素材是用户自己下载的
+    # CC0 动作包，不属于代码，因此**不复制进本仓库**，改为由本站把该路径代理到
+    # XSXB 的 dist/local-assets/ —— 你在 XSXB 里增删素材，游戏工作台自动看得到。
+    XSXB_LOCAL_ASSETS_DIR = (
+        Path(_str("XSXB_LOCAL_ASSETS_DIR", "")) if _str("XSXB_LOCAL_ASSETS_DIR") else None
+    )
+
     # ---- 跨域（ComfyUI 前端桥梁要跨域读取本站的工作流 JSON）----
     # 默认只放行 ComfyUI 自身来源；需要局域网/其它端口时用 CORS_ALLOWED_ORIGINS
     # 逗号分隔覆盖，置 "*" 表示全放开（仅建议在完全可信的本机环境使用）。
@@ -124,6 +133,10 @@ class Config:
     SYNC_AUTO = _bool("SYNC_AUTO", True)
     SEED_LIMIT = _int("SEED_LIMIT", 60)
 
+    # ---- AI 视频工作台资产出图（M19）----
+    AI_VIDEO_GENERATE_TIMEOUT = _int("AI_VIDEO_GENERATE_TIMEOUT", 300)
+    AI_VIDEO_ASSET_MAX_MB = _int("AI_VIDEO_ASSET_MAX_MB", 32)
+
     # ---- 反推上传（M9）----
     REVERSE_UPLOAD_MAX_MB = _int("REVERSE_UPLOAD_MAX_MB", 20)
     REVERSE_UPLOAD_TTL_HOURS = _int("REVERSE_UPLOAD_TTL_HOURS", 24)
@@ -142,12 +155,18 @@ class Config:
     OPENAI_VISION_API_KEY = _str("OPENAI_VISION_API_KEY", "")
     OPENAI_VISION_TIMEOUT = _int("OPENAI_VISION_TIMEOUT", 120)
 
-    # ---- 可选 AI 语义扩写（M6.4）----
+    # ---- 可选 AI 语义扩写 / 本地 GPT（M6.4）----
+    # 任何 OpenAI-compatible 的本地服务都可以接进来：Ollama、LM Studio、
+    # llama.cpp server、vLLM 等。endpoint 既可写 ``http://127.0.0.1:11434``，
+    # 也可写完整的 ``http://127.0.0.1:11434/v1`` —— 统一由 core.llm 归一化。
     AI_PROVIDER_ENABLED = _bool("AI_PROVIDER_ENABLED", False)
     AI_PROVIDER_ENDPOINT = _str("AI_PROVIDER_ENDPOINT", "")
     AI_PROVIDER_MODEL = _str("AI_PROVIDER_MODEL", "")
     AI_PROVIDER_API_KEY = _str("AI_PROVIDER_API_KEY", "")
     AI_PROVIDER_TIMEOUT = _int("AI_PROVIDER_TIMEOUT", 60)
+    # 本地服务常只加载一个模型：未显式填 model 时允许从 /v1/models 自动取第一个。
+    AI_PROVIDER_AUTO_MODEL = _bool("AI_PROVIDER_AUTO_MODEL", True)
+    AI_PROVIDER_MAX_TOKENS = _int("AI_PROVIDER_MAX_TOKENS", 1024)
 
     @classmethod
     def comfyui_base(cls) -> str:

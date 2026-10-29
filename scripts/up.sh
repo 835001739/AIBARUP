@@ -2,9 +2,9 @@
 #
 # AIBAR 一键启动脚本
 # =================
-# 一条命令拉起整套本地环境：ComfyUI（:8188）→ AIBAR（:8099），并把
-# AIBAR 的「ComfyUI 桥梁扩展」同步进 ComfyUI，使「在 ComfyUI 中打开并载入
-# 工作流 + 提示词」的深链接可用。
+# 一条命令拉起整套本地环境：ComfyUI（:8188）→ 本地 GPT（Ollama :11434，
+# 可选）→ AIBAR（:8099），并把 AIBAR 的「ComfyUI 桥梁扩展」同步进 ComfyUI，
+# 使「在 ComfyUI 中打开并载入工作流 + 提示词」的深链接可用。
 #
 # 用法：
 #   ./scripts/up.sh              等价于 start
@@ -223,19 +223,52 @@ start_aibar() {
   return 1
 }
 
+OLLAMA_URL="http://127.0.0.1:11434"
+OLLAMA_HEALTH="$OLLAMA_URL/api/version"
+
+start_ollama() {
+  # 只有本项目自带 Ollama 时才管它；用系统安装的 Ollama 时完全不动。
+  local helper="$AIBAR_DIR/scripts/ollama.sh"
+  if [ ! -x "$helper" ]; then
+    return 0
+  fi
+  if [ ! -x "$AIBAR_DIR/data/ollama/Ollama.app/Contents/Resources/ollama" ] \
+     && [ ! -x "$AIBAR_DIR/tmp/ollama/Ollama.app/Contents/Resources/ollama" ]; then
+    return 0
+  fi
+  head1 "启动本地 GPT（Ollama）"
+  if "$helper" start; then
+    log "本地 GPT 就绪：$OLLAMA_URL"
+    return 0
+  fi
+  warn "Ollama 未就绪；提示词扩写会自动回退规则引擎，不影响 AIBAR 启动"
+  return 0
+}
+
+stop_ollama() {
+  local helper="$AIBAR_DIR/scripts/ollama.sh"
+  if [ -x "$helper" ] && [ -f "$AIBAR_DIR/tmp/ollama.pid" ]; then
+    "$helper" stop || true
+  fi
+}
+
 do_start() {
   mkdir -p "$RUN_DIR"
   # ComfyUI 先起：它冷启动慢，且 AIBAR 启动后会立即探测 ComfyUI 状态
   start_comfyui
   local comfy_rc=$?
+  start_ollama
   start_aibar
   local aibar_rc=$?
 
   head1 "结果"
   printf '  AIBAR    %s\n' "$AIBAR_URL"
   printf '  ComfyUI  %s\n' "$COMFYUI_URL"
+  if curl -fsS -m 2 "$OLLAMA_HEALTH" >/dev/null 2>&1; then
+    printf '  本地GPT  %s\n' "$OLLAMA_URL"
+  fi
   if [ "$comfy_rc" -eq 0 ] && [ "$aibar_rc" -eq 0 ]; then
-    log "两个服务都已就绪。日志：$AIBAR_LOG / $COMFYUI_LOG"
+    log "服务已就绪。日志：$AIBAR_LOG / $COMFYUI_LOG"
     return 0
   fi
   err "部分服务未就绪，看日志排查：$AIBAR_LOG / $COMFYUI_LOG"
@@ -288,6 +321,7 @@ do_stop() {
   head1 "停止服务"
   stop_one "AIBAR" "$AIBAR_PID_FILE" "$AIBAR_PORT"
   stop_one "ComfyUI" "$COMFYUI_PID_FILE" "$COMFYUI_PORT"
+  stop_ollama
 }
 
 # ---------------------------------------------------------------- 状态
@@ -315,6 +349,7 @@ do_status() {
   head1 "运行状态"
   status_one "AIBAR" "$AIBAR_HEALTH" "$AIBAR_URL" "$AIBAR_PID_FILE" "$AIBAR_PORT"
   status_one "ComfyUI" "$COMFYUI_HEALTH" "$COMFYUI_URL" "$COMFYUI_PID_FILE" "$COMFYUI_PORT"
+  status_one "本地GPT" "$OLLAMA_HEALTH" "$OLLAMA_URL" "" "11434"
 
   printf '\n  %sComfyUI 桥梁扩展%s：' "$C_BOLD" "$C_RESET"
   if [ -f "$BRIDGE_DST/js/aibar_bridge.js" ]; then

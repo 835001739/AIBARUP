@@ -102,3 +102,78 @@
 ## 六、总体结论
 
 **M1–M10 与 M7/M8 后端能力已按 PRD 实现并完成运行时实测验收**；自动化测试套件已复跑至 **215 passed（全绿）**，并修复了 2 类真实缺陷（`_detach_source_refs` 列缺失、测试桩 `json` 遮蔽）。M11 接口、Provider 中心、队列与降级逻辑均已就位；Qwen3-VL 8B/4B 模型资产下载完成，**真实冒烟通过**（8B 实测合成图→结构化 JSON，18s；节点契约 `AILab_QwenVL_GGUF` 已修正、指令经 `custom_prompt` 注入），JoyCaption 因仓库 gated 待 HF 令牌；本轮新增「点击工作流 → 衔接 ComfyUI 直接出图」联动能力（M2 增强）并通过浏览器 E2E 实测。M8/M9 的视觉与交互闭环建议结合已打开的预览页做最终人工走查。整体达到 P0 Demo + P1.x 验收基线。
+
+---
+
+## 七、M19 · AI 视频创作工作台增量验收（2026-10-28）
+
+| 验收项 | 结果 | 证据 |
+|---|---|---|
+| Excel 方法论结构化 | ✅ | 将 L0-L5、资产层、Scene→Shot、状态、参数快照和 QC 落入独立数据模型 |
+| 数据迁移幂等 | ✅ | `test_ai_video.py` 验证迁移首次建表、二次无动作 |
+| 项目/场景/镜头/资产 API | ✅ | 独立 Blueprint，统一 envelope 与局部异常处理器 |
+| 真人写实短剧模板 | ✅ | 一次生成 4 场 28 镜与 5 个资产草稿；空项目限制防止重复导入 |
+| 口型与重试规则 | ✅ | 模板逐镜标记 6 个口型镜；拒绝达到最大次数自动转 `needs_human` |
+| 参数快照与完整 QC | ✅ | 支持 13 项 QC、模型/seed 等 snapshot JSON 的读写与聚合 |
+| 隐私与路径 | ✅ | 资产只接受受控相对引用或资源 ID，绝对路径/`..` 被拒绝 |
+| 原生前端工作台 | ✅ | Hash 导航、项目/资产/场景/镜头管理、筛选、响应式暗色布局 |
+| Python 回归 | ✅ | `.venv/bin/python -m pytest -q tests/py` → **743 passed, 7 skipped** |
+| JS 回归 | ✅ | bundled Node 执行 `--test tests/js/*.test.js` → **237 passed** |
+| 真实 Flask 冒烟 | ✅ | 临时服务首页含 `data-tab="ai-video"`；`/api/ai-video/meta` 返回 200、6 个阶段 |
+| 浏览器视觉人工走查 | 🟡 | 当前浏览器桥未连接；结构、脚本、CSS、响应式接线已由自动测试覆盖 |
+
+**M19 结论**：工作台 MVP 已可用，覆盖 Excel 提出的半自动 L2 管理骨架；角色/场景资产已接入 ComfyUI 出图、项目默认工作流与图片展示。TTS、粗剪导出与自动视觉质检仍属于后续自动化扩展。
+
+### 7.1 资产图片 / 工作流 / 重新生成（2026-10-29）
+
+| 验收项 | 结果 | 证据 |
+|---|---|---|
+| 资产图片与信息 | ✅ | 资产卡显示图片、状态、描述、工作流、种子、尺寸；缺图显示类型占位 |
+| 出图工作流管理 | ✅ | 项目默认工作流 + 资产级覆盖；30 个已同步工作流可列出并切换 |
+| 角色重新生成 | ✅ | `POST /assets/1/generate` 后台执行，ComfyUI 4 步 FLUX.2 Klein 出图成功；资产 1 生成 1024×1024 角色设定图 |
+| 多角度/表情组 | ✅ | 资产 1 生成 4 张角度图（正面/四分之三侧/侧面/背面），图库可预览、设为封面、删除 |
+| 图片服务 | ✅ | `/api/ai-video/assets/1/image` 返回 PNG；只允许 `data/` 内受控路径 |
+| 失败可读 | ✅ | ComfyUI 执行错误立即转 `failed` + 中文原因，不再卡到 300s 超时 |
+| Python / JS 回归 | ✅ | 776 passed / 244 passed |
+
+
+---
+
+## 八、M6.4 本地 GPT 连接修复验收（2026-10-28）
+
+| 验收项 | 结果 | 证据 |
+|---|---|---|
+| 端点归一化 | ✅ | 根地址、`/v1`、`/api`、完整 `/chat/completions` 均归一到 `/v1`；`test_llm_client.py` 覆盖 |
+| 模型自动发现 | ✅ | `AI_PROVIDER_MODEL` 留空时读取 `/v1/models` 第一个模型并缓存 30s |
+| 代理绕过 | ✅ | 回环主机自动补 `NO_PROXY`；避免 `HTTP_PROXY` 把本机请求转走 |
+| 错误可读 | ✅ | 连接拒绝 / 404 / 模型不存在 / 401 / 429 / 5xx / 超时 / 空内容均有专属错误码与中文建议 |
+| 真实 HTTP 链路 | ✅ | `test_provider_test_against_real_openai_compatible_server` 用本机 HTTP 桩验证 `GET /v1/models` + `POST /v1/chat/completions` |
+| Flask API | ✅ | `GET /api/prompts/ai-provider/status?probe=1`、`POST /api/prompts/ai-provider/test` 实测返回统一 envelope |
+| 界面入口 | ✅ | 提示词工作台右上角「本地 GPT」状态胶囊 + 连接弹窗；静态接线测试通过 |
+| 命令行自检 | ✅ | `scripts/check_local_llm.py` 可输出端点、模型、耗时、错误码与修复建议 |
+| Python 回归 | ✅ | `.venv/bin/python -m pytest -q tests/py` → **784 passed, 7 skipped**（ComfyUI 在线时） |
+| JS 回归 | ✅ | bundled Node `--test tests/js/*.test.js` → **252 passed** |
+| 扩写引擎选择 | ✅ | 高级设置新增「扩写引擎」；本地 GPT 连通时默认选 `openai_compatible`，可手动切回 `rules` |
+| 当前机器实际状态 | ✅ | 已安装 Ollama + `qwen2.5:3b`（`data/ollama/`）；`/api/prompts/ai-provider/test` 返回 `chat_ok:true`；真实扩写返回 `provider=openai_compatible` |
+| 重启后可用性 | ✅ | `./scripts/up.sh start` 自动拉起本地 GPT；`./scripts/up.sh status` 显示「本地GPT 运行中」 |
+
+**结论**：本地 GPT 连接已在本机打通：Ollama 提供 OpenAI-compatible 接口，AIBAR 自动发现 `qwen2.5:3b`，提示词扩写走 `openai_compatible`，失败仍会回退规则引擎。
+
+### 7.2 工作台可靠性 / 可读性优化（2026-10-29）
+
+| 优化项 | 结果 | 证据 |
+|---|---|---|
+| 批量生成轮询 | ✅ | 轮询上限 15 分钟，5 张表情组不会再中途停止 |
+| 换种子生效 | ✅ | 勾选换种子后不再被输入框旧种子覆盖 |
+| 生成进度 | ✅ | 资产卡/详情显示 `生成 2/4 · 侧面`；部分失败保留警告 |
+| 中断任务恢复 | ✅ | 超过 15 分钟仍 `generating` 的资产在打开项目时转 `failed`，不会永久卡住 |
+| 阶段推导 | ✅ | 项目 1 资产全就绪显示 L2；项目 2 资产未就绪显示 L1 0/5 |
+| 状态与类型 | ✅ | 12 个精确状态可筛选；镜头类型显示“道具空镜/反应特写/过肩镜头”等中文 |
+| 工作流能力过滤 | ✅ | 30 个工作流中仅角色可出图的进入选择；视频/音频/需参考图标记不可用原因 |
+| 场景折叠 | ✅ | 单场景收起后卡片 28→23，支持全部收起/展开，筛选栏吸顶 |
+| 缩略图全图 | ✅ | 点击封面/多角度缩略图打开全图，支持左右键切换、Esc/背景关闭 |
+| 详情被自动关闭 | ✅ | 后台轮询/保存封面重绘时保留详情抽屉；仅切换项目时关闭 |
+| 首尾帧选择 | ✅ | 点击镜头卡首/尾帧：16 张项目图可选，实测设置成功；支持上传、查看、清除 |
+| 首尾帧生成 | ✅ | 首帧/尾帧均可按镜头提示生成；尾帧实测 45 秒完成并写回卡片，支持生成中/失败状态 |
+| 帧生成中断恢复 | ✅ | 15 分钟仍停留在 generating 的首/尾帧打开项目时转 failed，可重试 |
+| Python / JS 回归 | ✅ | 784 passed / 252 passed |

@@ -41,6 +41,10 @@
             <span class="nav-label">工作流</span>
             <span class="badge badge-count">0</span>
           </button>
+          <button type="button" class="nav-item" data-tab="ai-video">
+            <span class="nav-icon" data-icon="film" data-icon-size="18"></span>
+            <span class="nav-label">AI 视频工作台</span>
+          </button>
           <button type="button" class="nav-item" data-tab="comic">
             <span class="nav-icon" data-icon="book" data-icon-size="18"></span>
             <span class="nav-label">漫画工作室</span>
@@ -60,6 +64,10 @@
           <button type="button" class="nav-item" data-tab="videopaint">
             <span class="nav-icon" data-icon="film" data-icon-size="18"></span>
             <span class="nav-label">视频转绘</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="game">
+            <span class="nav-icon" data-icon="cube" data-icon-size="18"></span>
+            <span class="nav-label">游戏工作台</span>
           </button>
         </div>
       </div>
@@ -167,6 +175,10 @@
               </div>
               <span class="studio-hint">切换媒体类型只影响左侧词库筛选，原始提示词保持不变</span>
               <span class="spacer"></span>
+              <button id="btn-ai-provider" type="button" class="ai-provider-chip" aria-label="本地 GPT 连接状态与自检">
+                <span id="ai-provider-dot" class="ai-provider-dot" aria-hidden="true"></span>
+                <span id="ai-provider-label">本地 GPT</span>
+              </button>
               <div class="studio-access">
                 <button id="btn-open-library" type="button" class="btn btn-secondary btn-sm access-library">
                   <span data-icon="panelLeft" data-icon-size="14"></span><span>词库</span>
@@ -313,6 +325,13 @@
                         <span class="caret" data-icon="chevronDown" data-icon-size="16"></span>
                       </button>
                       <div id="adv-panel" class="disclosure-body" hidden>
+                        <label class="field">
+                          <span class="field-label">扩写引擎</span>
+                          <select id="opt-provider" class="select">
+                            <option value="rules">本地规则（确定性，不联网）</option>
+                          </select>
+                        </label>
+                        <p class="text-tertiary">本地 GPT 已连接时默认走模型扩写；模型失败会自动回退本地规则。</p>
                         <label class="field">
                           <span class="field-label">目标工作流</span>
                           <select id="opt-workflow" class="select"></select>
@@ -501,6 +520,15 @@
       </section>
 
       <!-- ========================================================
+           AI 视频工作台：项目 / 阶段 / 资产 / 场景镜头
+           ======================================================== -->
+      <section class="panel" data-panel="ai-video" hidden aria-label="AI 视频工作台">
+        <div class="panel-inner">
+          <div id="ai-video-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
            漫画工作室（M12）
            ======================================================== -->
       <section class="panel" data-panel="comic" hidden aria-label="漫画工作室">
@@ -537,11 +565,29 @@
       </section>
 
       <!-- ========================================================
-           视频转绘（M16）：视频 → 逐帧提姿态 → 参考图锁脸重绘 → 组图 + 无背景序列帧
+           视频转绘（M16）：视频 → 逐帧提姿态 → Z-Image 骨架控姿重绘 → 组图 + 无背景序列帧
            ======================================================== -->
       <section class="panel" data-panel="videopaint" hidden aria-label="视频转绘">
         <div class="panel-inner">
           <div id="vp-root"></div>
+        </div>
+      </section>
+
+      <!-- ========================================================
+           游戏工作台（M18）：嵌入 XSXB Animation Director 构建产物
+           3D 动作库预览 / 时间轴修剪 / 导出 MP4 与八方向 PNG 序列。
+           用 iframe 隔离——原项目是 React + Three.js 单页应用，
+           与本站原生 JS 混跑会互相污染全局作用域与样式。
+           ======================================================== -->
+      <section class="panel" data-panel="game" hidden aria-label="游戏工作台">
+        <div class="panel-inner panel-inner--flush">
+          <iframe
+            id="game-frame"
+            class="game-frame"
+            src="/static/game/index.html"
+            title="游戏工作台"
+            loading="lazy"
+            referrerpolicy="no-referrer"></iframe>
         </div>
       </section>
 
@@ -647,6 +693,7 @@
 <script src="/static/js/groups.js"></script>
 <script src="/static/js/video.js"></script>
 <script src="/static/js/videopaint.js"></script>
+<script src="/static/js/ai-video.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

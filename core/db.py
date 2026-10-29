@@ -493,6 +493,119 @@ _TABLES: dict[str, str] = {
             updated_at    TEXT
         )
     """,
+    # ---------------- M19 AI 视频创作工作台 ----------------
+    # 工作台把 Excel 中的 L0-L5 分层流程落成可追踪实体：项目 → 场景 → 镜头，
+    # 资产与参数快照独立保存，避免提示词、状态和产物引用混在一张大表里。
+    "ai_video_projects": """
+        CREATE TABLE IF NOT EXISTS ai_video_projects (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            name              TEXT NOT NULL,
+            video_format      TEXT NOT NULL DEFAULT 'short_drama',
+            aspect_ratio      TEXT NOT NULL DEFAULT '9:16',
+            visual_style      TEXT NOT NULL DEFAULT 'realistic',
+            target_duration   REAL NOT NULL DEFAULT 120,
+            weekly_output     INTEGER NOT NULL DEFAULT 3,
+            automation_level  TEXT NOT NULL DEFAULT 'L2',
+            status            TEXT NOT NULL DEFAULT 'planning',
+            notes             TEXT NOT NULL DEFAULT '',
+            compliance        TEXT NOT NULL DEFAULT '{}',
+            default_workflow  TEXT NOT NULL DEFAULT '',
+            default_negative  TEXT NOT NULL DEFAULT '',
+            created_at        TEXT,
+            updated_at        TEXT
+        )
+    """,
+    "ai_video_scenes": """
+        CREATE TABLE IF NOT EXISTS ai_video_scenes (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id     INTEGER NOT NULL,
+            scene_code     TEXT NOT NULL,
+            title          TEXT NOT NULL DEFAULT '',
+            location       TEXT NOT NULL DEFAULT '',
+            time_of_day    TEXT NOT NULL DEFAULT '',
+            axis_rule      TEXT NOT NULL DEFAULT '',
+            lighting       TEXT NOT NULL DEFAULT '',
+            continuity     TEXT NOT NULL DEFAULT '{}',
+            order_idx      INTEGER NOT NULL DEFAULT 0,
+            created_at     TEXT,
+            updated_at     TEXT,
+            UNIQUE(project_id, scene_code)
+        )
+    """,
+    "ai_video_shots": """
+        CREATE TABLE IF NOT EXISTS ai_video_shots (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id      INTEGER NOT NULL,
+            scene_id        INTEGER NOT NULL,
+            shot_code       TEXT NOT NULL,
+            order_idx       INTEGER NOT NULL DEFAULT 0,
+            shot_type       TEXT NOT NULL DEFAULT 'establishing',
+            duration        REAL NOT NULL DEFAULT 3,
+            lens            TEXT NOT NULL DEFAULT '',
+            camera          TEXT NOT NULL DEFAULT '',
+            prompt_image    TEXT NOT NULL DEFAULT '',
+            prompt_motion   TEXT NOT NULL DEFAULT '',
+            speaker         TEXT NOT NULL DEFAULT '',
+            dialogue        TEXT NOT NULL DEFAULT '',
+            lipsync         INTEGER NOT NULL DEFAULT 0,
+            visible_face    TEXT NOT NULL DEFAULT '',
+            first_frame     TEXT NOT NULL DEFAULT '',
+            last_frame      TEXT NOT NULL DEFAULT '',
+            status          TEXT NOT NULL DEFAULT 'pending',
+            attempts        INTEGER NOT NULL DEFAULT 0,
+            max_attempts    INTEGER NOT NULL DEFAULT 3,
+            quality_tier    TEXT NOT NULL DEFAULT 'draft',
+            cost_estimate   REAL NOT NULL DEFAULT 0,
+            snapshot        TEXT NOT NULL DEFAULT '{}',
+            qc              TEXT NOT NULL DEFAULT '{}',
+            frame_status    TEXT NOT NULL DEFAULT '{}',
+            notes           TEXT NOT NULL DEFAULT '',
+            created_at      TEXT,
+            updated_at      TEXT,
+            UNIQUE(project_id, shot_code)
+        )
+    """,
+    "ai_video_assets": """
+        CREATE TABLE IF NOT EXISTS ai_video_assets (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id  INTEGER NOT NULL,
+            asset_type  TEXT NOT NULL,
+            asset_key   TEXT NOT NULL DEFAULT '',
+            name        TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            ref_path    TEXT NOT NULL DEFAULT '',
+            metadata    TEXT NOT NULL DEFAULT '{}',
+            status      TEXT NOT NULL DEFAULT 'draft',
+            prompt      TEXT NOT NULL DEFAULT '',
+            negative    TEXT NOT NULL DEFAULT '',
+            workflow    TEXT NOT NULL DEFAULT '',
+            seed        INTEGER,
+            image_path  TEXT NOT NULL DEFAULT '',
+            image_id    TEXT,
+            error_message TEXT NOT NULL DEFAULT '',
+            generation_attempts INTEGER NOT NULL DEFAULT 0,
+            last_generated_at TEXT,
+            created_at  TEXT,
+            updated_at  TEXT,
+            UNIQUE(project_id, asset_type, asset_key)
+        )
+    """,
+    # M19 资产多图：一个角色可以保存多角度/表情变体，封面仍由 ai_video_assets.image_path 指向。
+    "ai_video_asset_images": """
+        CREATE TABLE IF NOT EXISTS ai_video_asset_images (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_id    INTEGER NOT NULL,
+            project_id  INTEGER NOT NULL,
+            label       TEXT NOT NULL DEFAULT '',
+            prompt      TEXT NOT NULL DEFAULT '',
+            image_path  TEXT NOT NULL DEFAULT '',
+            workflow    TEXT NOT NULL DEFAULT '',
+            seed        INTEGER,
+            width       INTEGER NOT NULL DEFAULT 0,
+            height      INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT
+        )
+    """,
 }
 
 _INDEXES: list[tuple[str, str]] = [
@@ -553,6 +666,18 @@ _INDEXES: list[tuple[str, str]] = [
     ("idx_video_paint_jobs_updated", "CREATE INDEX IF NOT EXISTS idx_video_paint_jobs_updated ON video_paint_jobs(updated_at DESC)"),
     ("idx_video_paint_frames_job", "CREATE INDEX IF NOT EXISTS idx_video_paint_frames_job ON video_paint_frames(job_id, order_idx)"),
     ("idx_video_paint_frames_status", "CREATE INDEX IF NOT EXISTS idx_video_paint_frames_status ON video_paint_frames(job_id, status)"),
+    # M19 AI 视频创作工作台
+    ("idx_ai_video_projects_updated", "CREATE INDEX IF NOT EXISTS idx_ai_video_projects_updated ON ai_video_projects(updated_at DESC)"),
+    ("idx_ai_video_projects_status", "CREATE INDEX IF NOT EXISTS idx_ai_video_projects_status ON ai_video_projects(status)"),
+    ("idx_ai_video_scenes_project", "CREATE INDEX IF NOT EXISTS idx_ai_video_scenes_project ON ai_video_scenes(project_id, order_idx)"),
+    ("idx_ai_video_shots_project", "CREATE INDEX IF NOT EXISTS idx_ai_video_shots_project ON ai_video_shots(project_id, order_idx)"),
+    ("idx_ai_video_shots_scene", "CREATE INDEX IF NOT EXISTS idx_ai_video_shots_scene ON ai_video_shots(scene_id, order_idx)"),
+    ("idx_ai_video_shots_status", "CREATE INDEX IF NOT EXISTS idx_ai_video_shots_status ON ai_video_shots(project_id, status)"),
+    ("idx_ai_video_shots_lipsync", "CREATE INDEX IF NOT EXISTS idx_ai_video_shots_lipsync ON ai_video_shots(project_id, lipsync)"),
+    ("idx_ai_video_assets_project", "CREATE INDEX IF NOT EXISTS idx_ai_video_assets_project ON ai_video_assets(project_id, asset_type)"),
+    ("idx_ai_video_assets_status", "CREATE INDEX IF NOT EXISTS idx_ai_video_assets_status ON ai_video_assets(project_id, status)"),
+    ("idx_ai_video_asset_images_asset", "CREATE INDEX IF NOT EXISTS idx_ai_video_asset_images_asset ON ai_video_asset_images(asset_id, id)"),
+    ("idx_ai_video_asset_images_project", "CREATE INDEX IF NOT EXISTS idx_ai_video_asset_images_project ON ai_video_asset_images(project_id)"),
 ]
 
 # 幂等补列：只在列缺失时执行
@@ -616,6 +741,21 @@ _COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     # M16 严格骨架验收：只把通过生成后 DWPose 复检的帧标成 done。
     ("video_paint_frames", "pose_score", "ALTER TABLE video_paint_frames ADD COLUMN pose_score REAL"),
     ("video_paint_frames", "generation_attempts", "ALTER TABLE video_paint_frames ADD COLUMN generation_attempts INTEGER NOT NULL DEFAULT 0"),
+    # M19 资产出图：项目默认工作流 / 默认负向词，资产级可覆盖
+    ("ai_video_projects", "default_workflow", "ALTER TABLE ai_video_projects ADD COLUMN default_workflow TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_projects", "default_negative", "ALTER TABLE ai_video_projects ADD COLUMN default_negative TEXT NOT NULL DEFAULT ''"),
+    # M19 资产出图：提示词、工作流、种子、产出图、失败原因与尝试次数
+    ("ai_video_assets", "prompt", "ALTER TABLE ai_video_assets ADD COLUMN prompt TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_assets", "negative", "ALTER TABLE ai_video_assets ADD COLUMN negative TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_assets", "workflow", "ALTER TABLE ai_video_assets ADD COLUMN workflow TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_assets", "seed", "ALTER TABLE ai_video_assets ADD COLUMN seed INTEGER"),
+    ("ai_video_assets", "image_path", "ALTER TABLE ai_video_assets ADD COLUMN image_path TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_assets", "image_id", "ALTER TABLE ai_video_assets ADD COLUMN image_id TEXT"),
+    ("ai_video_assets", "error_message", "ALTER TABLE ai_video_assets ADD COLUMN error_message TEXT NOT NULL DEFAULT ''"),
+    ("ai_video_assets", "generation_attempts", "ALTER TABLE ai_video_assets ADD COLUMN generation_attempts INTEGER NOT NULL DEFAULT 0"),
+    ("ai_video_assets", "last_generated_at", "ALTER TABLE ai_video_assets ADD COLUMN last_generated_at TEXT"),
+    # M19 镜头首尾帧生成：记录 start/end 的生成状态、种子、工作流与失败原因
+    ("ai_video_shots", "frame_status", "ALTER TABLE ai_video_shots ADD COLUMN frame_status TEXT NOT NULL DEFAULT '{}'"),
 ]
 
 

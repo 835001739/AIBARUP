@@ -26,9 +26,7 @@ import re
 import time
 from typing import Any
 
-import requests
-
-from config import CFG
+from core import llm
 from core.errors import AIBARError
 from core.logging_setup import get_logger, safe_log
 from prompt import engine as _engine
@@ -140,41 +138,26 @@ _AI_SYSTEM = (
 
 def _plan_episodes_ai(worldview: str, plot_summary: str) -> tuple[list[dict] | None, str | None]:
     """用 LLM 拆分剧情为集；任何异常返回 (None, reason) 交由上层回退规则。"""
-    if not (CFG.AI_PROVIDER_ENABLED and CFG.AI_PROVIDER_ENDPOINT and CFG.AI_PROVIDER_MODEL):
-        return None, "AI 扩写服务未启用"
-    payload = {
-        "model": CFG.AI_PROVIDER_MODEL,
-        "temperature": 0,
-        "messages": [
-            {"role": "system", "content": _AI_SYSTEM},
-            {
-                "role": "user",
-                "content": json.dumps(
-                    {"worldview": worldview or "", "plot_summary": plot_summary or ""},
-                    ensure_ascii=False,
-                ),
-            },
-        ],
-    }
-    headers = {"Content-Type": "application/json"}
-    if CFG.AI_PROVIDER_API_KEY:
-        headers["Authorization"] = "Bearer %s" % CFG.AI_PROVIDER_API_KEY
+    if not llm.is_configured():
+        return None, "本地 GPT 未启用或未配置端点"
     try:
-        resp = requests.post(
-            "%s/chat/completions" % CFG.AI_PROVIDER_ENDPOINT.rstrip("/"),
-            headers=headers,
-            json=payload,
-            timeout=max(1, int(CFG.AI_PROVIDER_TIMEOUT or 60)),
+        content = llm.chat(
+            [
+                {"role": "system", "content": _AI_SYSTEM},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {"worldview": worldview or "", "plot_summary": plot_summary or ""},
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+            temperature=0,
         )
+    except llm.LLMError as exc:
+        return None, "AI 分集请求失败：%s" % exc.message
     except Exception as exc:
         return None, "AI 分集请求失败：%s" % type(exc).__name__
-    if int(getattr(resp, "status_code", 0) or 0) >= 400:
-        return None, "AI 分集服务返回 HTTP %s" % getattr(resp, "status_code", 0)
-    try:
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"]
-    except Exception:
-        return None, "AI 分集返回结构异常"
     episodes = _parse_ai_episodes(content)
     if not episodes:
         return None, "AI 分集未返回有效集列表"
@@ -395,11 +378,7 @@ def generate_storyboard(
         raise AIBARError("invalid_input", "请先填写剧情摘要（plot_summary）再生成分镜")
 
     if provider is None:
-        provider = (
-            "openai_compatible"
-            if (CFG.AI_PROVIDER_ENABLED and CFG.AI_PROVIDER_ENDPOINT and CFG.AI_PROVIDER_MODEL)
-            else "rules"
-        )
+        provider = "openai_compatible" if llm.is_configured() else "rules"
     _profile = profile or _engine.DEFAULT_PROFILE
     _intensity = intensity or _engine.DEFAULT_INTENSITY
     if _intensity not in _engine.INTENSITIES:

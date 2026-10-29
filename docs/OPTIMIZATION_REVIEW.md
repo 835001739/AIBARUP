@@ -449,3 +449,80 @@ M17.3 实测发现 Klein + ReferenceLatent 做不到姿势控制，结论指向�
 - 真机出图：SDXL 896×1152 ×2 均 `success`；`SetUnionControlNetType.type=openpose` 校验通过。
 - 模型依赖全部就位（animagine_xl_3.1 / xinsir-union-sdxl / CLIP-ViT-H / ip-adapter-faceid-plusv2 / insightface buffalo_l）。
   `models/loras/` 下 LoRA 是**符号链接**，`du -h` 显示 0B 属正常（实际 371MB）。
+
+---
+
+## 十一、M18 · 游戏工作台：集成 XSXB Animation Director（2026-09-29）
+
+### 需求
+
+把独立项目 `~/AIproject/XSXB-animation-director`（Vite + React + Three.js 的 3D 动画导演台，
+5077 行 TS，动作库预览 / 时间轴修剪 / 导出 MP4 与八方向 PNG 序列）作为 AIBARUP 新模块「游戏工作台」。
+
+### 技术冲突与决策
+
+AIBARUP 规范是「原生 HTML/CSS/JS、无构建步骤」，XSXB 是 Vite 构建项目。
+三个选项：重写原生 JS（5000 行 Three.js 逻辑，工作量不可接受）/ 外链（不算集成）/
+**嵌入预构建产物**（唯一务实解，已采用）。
+
+采用 **iframe 隔离**而非同页挂载：React 应用自带全局样式与 DOM 根节点，
+与本站原生 JS 混跑会互相污染；iframe 是隔离成本最低的方式。
+
+### 改动
+
+| 位置 | 改动 |
+|---|---|
+| XSXB（不改源文件） | `npx vite build --base=./` 构建出**相对路径**产物（默认 base=/ 会 404 于子路径） |
+| `static/game/` | 新增 1.2MB 构建产物（index.html + assets/ + favicon.ico）。**刻意不含** `dist/local-assets/`（16MB 动作素材，遵循 XSXB「仓库不带素材」的边界） |
+| `static/index.html` | 「创作」组末尾加 nav 项（cube 图标）+ `data-panel="game"` 的 panel（iframe `loading="lazy"`） |
+| `static/js/app.js` | `PAGES.game` + `ORDER` 尾部加 `'game'`。纯 iframe 无状态，**不需要**独立 JS 模块与 onEnter |
+| `static/css/pages.css` | `.panel[data-panel="game"]` 去内边距 + `.panel-inner--flush` 去居中限宽 + `.game-frame` 满高（背景 #101317 与内嵌应用 theme-color 一致，防闪白） |
+| `docs/使用说明书.md` | 新增 §4.16（能力 / 技术边界 / 素材载入 / 更新产物步骤） |
+
+### 关键决策
+
+1. **不复制 local-assets**：16MB 动作素材是用户数据，XSXB README 明确「仓库只发布工具代码」。
+   复制代码产物（1.2MB）时跳过它；素材在界面里用 File API 拖入（纯前端，不经后端）。
+2. **构建时传 `--base=./` 而非改 XSXB 的 vite.config.ts**：不动上游项目源文件，
+   XSXB 仍可独立 dev/preview（dev server 不受 base 影响）。
+3. **iframe 而非 fetch 注入**：Three.js + React 的全局副作用（window 事件、样式表）
+   与原生 JS 冲突面太大，隔离收益远大于通信成本。
+4. **纯 iframe 不写 game.js**：没有状态、没有后端交互，加一层 JS 包装反而是负担；
+   页面注册（PAGES/ORDER）已足够让导航与标题系统识别它。
+
+### ⚠️ 初版踩坑（2026-09-29 当天修复）：动作库为空
+
+**误判**：最初 grep `fetch(` 因 BSD grep 转义问题漏配，误以为 XSXB「纯 File API 载入素材、
+不经后端」，于是只复制了 1.2MB 代码产物、跳过 local-assets —— 结果动作库 0 项。
+
+**真相**：`DirectorScene.ts:1610` / `RigCalibrationScene.ts:93` 会
+`fetch('/local-assets/animation-packs.json')`（**根相对路径、硬编码**），清单里的
+clip url 形如 `/local-assets/packs/<pack>/*.glb`。`--base=./` 管不了它们——
+iframe 托管在哪个子目录都没用，请求永远打站点根。
+
+**修复**（不复制 16MB 素材进仓库）：
+
+| 位置 | 改动 |
+|---|---|
+| `game/`（新包） | `routes.py`：`GET /local-assets/<path:filename>` → `send_from_directory` 代理到素材目录；目录缺失/文件缺失都 404（内嵌应用按「无素材」降级而非报错）；显式拒绝对目录穿越 |
+| `config.py` | 新增 `XSXB_LOCAL_ASSETS_DIR`（空 = 回落到 `ROOT.parent/XSXB-animation-director/dist/local-assets`） |
+| `app.py` | 注册 `game_bp` |
+
+**代理而非复制**的两个理由：素材是用户下载的第三方包（不属代码）；
+在 XSXB 里增删素材后游戏工作台**无需重建即见**。
+
+### 验证（修复后）
+
+- `curl /local-assets/animation-packs.json` → 200；GLB 素材 → 200。
+- agent-browser 实测：动作库 0 → **86 项**，Quaternius Universal Animation Library
+  [Standard]（83 动作）出现，提示「本地动作库已链接：载入 86 项动作」。
+  截图 `tmp/game-workbench-assets.png`。
+
+### 验证
+
+- `npx vite build --base=./` 成功（108 modules，1.18MB JS gzip 322KB）。
+- 三项静态资源经 Flask 均 200：`/static/game/index.html`、`assets/index-*.js`、`assets/index-*.css`。
+- `node --check` app.js 语法通过。
+- **agent-browser 实测**：点击「游戏工作台」导航 → iframe 内 ANIMATION DIRECTOR 完整渲染，
+  3D 视口人体模型正常（Three.js MPS/WebGL 正常），动作库 / 时间轴 / 导演参数面板齐全，导航高亮正确。
+- 截图存 `tmp/game-workbench.png`。

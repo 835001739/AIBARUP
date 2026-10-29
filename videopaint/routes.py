@@ -20,6 +20,8 @@
 | GET | ``/api/videopaint/jobs/<id>/frames/<order>/editor-link`` | 打开 ComfyUI 并载入该帧工作流的深链接 |
 | GET | ``/api/videopaint/jobs/<id>/frames/<order>/flux2-workflow-graph`` | 该帧 FLUX.2 Klein 工作流的 UI 格式 JSON（M17） |
 | GET | ``/api/videopaint/jobs/<id>/frames/<order>/flux2-editor-link`` | 打开 ComfyUI 并载入该帧 FLUX.2 工作流的深链接（M17） |
+| GET | ``/api/videopaint/jobs/<id>/frames/<order>/zimage-workflow-graph`` | 该帧 Z-Image Turbo 姿势工作流的 UI 格式 JSON |
+| GET | ``/api/videopaint/jobs/<id>/frames/<order>/zimage-editor-link`` | 打开 ComfyUI 并载入该帧 Z-Image 工作流的深链接 |
 """
 
 from __future__ import annotations
@@ -219,3 +221,20 @@ def frame_flux2_workflow_graph(job_id: int, order_idx: int):
 def frame_flux2_editor_link(job_id: int, order_idx: int):
     """返回打开 ComfyUI 并载入本帧 FLUX.2 Klein 工作流的深链接 dict（M17）。"""
     return ok(service.frame_flux2_editor_link(job_id, order_idx))
+
+
+@bp.get("/jobs/<int:job_id>/frames/<int:order_idx>/zimage-workflow-graph")
+def frame_zimage_workflow_graph(job_id: int, order_idx: int):
+    """返回本帧 Z-Image Turbo + Fun ControlNet 姿势工作流的 UI 格式 JSON。"""
+    info = service.build_frame_zimage_ui_graph(job_id, order_idx)
+    return Response(
+        json.dumps(info["ui"], ensure_ascii=False),
+        mimetype="application/json",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@bp.get("/jobs/<int:job_id>/frames/<int:order_idx>/zimage-editor-link")
+def frame_zimage_editor_link(job_id: int, order_idx: int):
+    """返回打开 ComfyUI 并载入本帧 Z-Image 姿势工作流的深链接。"""
+    return ok(service.frame_zimage_editor_link(job_id, order_idx))

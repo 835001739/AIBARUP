@@ -24,7 +24,9 @@ from core.errors import AIBARError
 from core.logging_setup import get_logger, safe_log, setup_logging
 from core.responses import ok
 
+from ai_video.routes import bp as ai_video_bp
 from comic.routes import bp as comic_bp
+from game.routes import bp as game_bp
 from prompt.routes import bp as prompt_bp
 from promptlib.routes import bp as promptlib_bp
 from reverse.routes import bp as reverse_bp
@@ -56,9 +58,11 @@ def create_app() -> Flask:
     app.register_blueprint(prompt_bp)
     app.register_blueprint(promptlib_bp)
     app.register_blueprint(reverse_bp)
+    app.register_blueprint(ai_video_bp)
     app.register_blueprint(comic_bp)
     app.register_blueprint(video_bp)
     app.register_blueprint(videopaint_bp)
+    app.register_blueprint(game_bp)
 
     _register_error_handlers(app)
     _register_cors(app)

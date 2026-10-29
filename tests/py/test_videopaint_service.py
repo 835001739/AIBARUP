@@ -194,3 +194,52 @@ def test_pose_control_graph_guard_rejects_disconnected_sampler():
     graph["13"]["inputs"]["positive"] = ["9", 0]
     with pytest.raises(Exception, match="骨架控制链未正确接入"):
         svc._assert_pose_control_graph(graph, "pose.png")
+
+
+def test_generate_uses_zimage_pose_workflow(monkeypatch, tmp_path):
+    """页面的批量 generate 必须提交 Z-Image 图，不能只新增一个编辑器按钮。"""
+    monkeypatch.setattr(Config, "DATA_DIR", tmp_path)
+    pose_path = tmp_path / "poses" / "pose.png"
+    pose_path.parent.mkdir(parents=True)
+    Image.new("RGB", (64, 64), (0, 255, 0)).save(pose_path)
+    out = io.BytesIO()
+    Image.new("RGB", (64, 64), (30, 40, 50)).save(out, format="PNG")
+
+    job = {
+        "id": 7, "group_id": 8, "prompt": "anime hero", "negative": "lowres",
+        "width": 64, "height": 64, "base_seed": 100, "seed_step": 3,
+        "controlnet_strength": 1.15, "pose_mode": "dwpose", "pose_resolution": 512,
+        "controlnet": "",
+    }
+    frame = {
+        "id": 9, "order_idx": 2, "status": "posed", "pose_path": "poses/pose.png",
+        "shot_frame_id": 10,
+    }
+    captured = {}
+    real_build = svc.videopaint_zimage.build_zimage_pose_workflow
+
+    def spy_build(**kwargs):
+        captured.update(kwargs)
+        return real_build(**kwargs)
+
+    monkeypatch.setattr(svc, "get_job", lambda _job_id: job)
+    monkeypatch.setattr(svc, "list_frames", lambda _job_id: [frame])
+    monkeypatch.setattr(svc.comfyui_client, "is_reachable", lambda: (True, ""))
+    monkeypatch.setattr(svc.comfyui_client, "upload_image", lambda *args, **kwargs: {})
+    monkeypatch.setattr(svc.videopaint_zimage, "build_zimage_pose_workflow", spy_build)
+    monkeypatch.setattr(
+        svc.comic_pose, "build_pose_workflow",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("不应调用 SDXL 构图器")),
+    )
+    monkeypatch.setattr(svc.comic_runner, "run_graph_once", lambda *args, **kwargs: (out.getvalue(), "", ""))
+    monkeypatch.setattr(svc, "_verify_generated_pose", lambda *args, **kwargs: (None, ""))
+    monkeypatch.setattr(svc.db, "execute", lambda *args, **kwargs: None)
+    monkeypatch.setattr(svc.comic_groups, "_save_frame_image", lambda *args, **kwargs: "shots/z.png")
+    monkeypatch.setattr(svc.comic_groups, "_sync_counts", lambda *_args: None)
+
+    svc.generate(7)
+
+    assert captured["pose_image"] == "aibar_vp_pose_7_2.png"
+    assert captured["seed"] == 106
+    assert captured["strength"] == 1.0  # 旧 SDXL 任务的 1.15 会映射到 Z-Image 合法上限
+    assert captured["positive"].startswith("solo, one person")

@@ -23,6 +23,7 @@ from config import Config
 from core import db
 from core.db import now
 from videopaint import service as svc
+from videopaint import zimage as videopaint_zimage
 import video.service as video_service
 
 
@@ -297,3 +298,63 @@ def test_flux2_ui_graph_roundtrip(monkeypatch, tmp_path):
         seed=info["seed"], steps=4, cfg=1.0,
     ))
     assert r["ok"], r["error"]
+
+
+# --------------------------------------------------------------------------- Z-Image Turbo · Fun ControlNet 姿势控制
+def test_zimage_pose_graph_uses_direct_skeleton_and_turbo_params():
+    graph = videopaint_zimage.build_zimage_pose_workflow(
+        pose_image="aibar_vp_pose_2_0.png",
+        positive="one woman kicking",
+        negative="collage",
+        seed=42,
+        width=896,
+        height=1152,
+    )
+    assert graph["1"]["inputs"]["unet_name"] == "z_image_turbo_bf16.safetensors"
+    assert graph["2"]["inputs"]["type"] == "lumina2"
+    assert graph["4"]["inputs"]["name"] == videopaint_zimage.DEFAULT_CONTROL_PATCH
+    assert graph["8"]["inputs"]["preprocessor"] == "none"
+    assert graph["8"]["inputs"]["image"] == ["7", 0]
+    assert graph["9"]["inputs"]["image"] == ["8", 0]
+    assert graph["11"]["inputs"]["model"] == ["9", 0]
+    assert graph["11"]["inputs"]["steps"] == 8
+    assert graph["11"]["inputs"]["cfg"] == 1.0
+    assert graph["10"]["inputs"]["width"] == 896
+    assert graph["10"]["inputs"]["height"] == 1152
+
+
+def test_zimage_pose_graph_guard_rejects_reprocessing_skeleton():
+    graph = videopaint_zimage.build_zimage_pose_workflow(
+        pose_image="pose.png", positive="one person"
+    )
+    graph["8"]["inputs"]["preprocessor"] = "DWPreprocessor"
+    with pytest.raises(Exception, match="Z-Image 骨架控制链"):
+        videopaint_zimage.assert_zimage_pose_workflow(graph, "pose.png")
+
+
+def test_build_frame_zimage_ui_graph_and_editor_link(monkeypatch, tmp_path):
+    jid, oidx = _seed_job_and_frame(tmp_path)
+    _patch_comfyui(monkeypatch)
+
+    info = svc.build_frame_zimage_ui_graph(jid, oidx)
+    assert info["pose_name"] == "aibar_vp_pose_%d_%d.png" % (jid, oidx)
+    types = [node["type"] for node in info["ui"]["nodes"]]
+    assert "ZImageFunControlnet" in types
+    assert "ModelPatchLoader" in types
+    assert "AIO_Preprocessor" in types
+    assert "ControlNetApplyAdvanced" not in types
+
+    link = svc.frame_zimage_editor_link(jid, oidx)
+    assert link["mode"] == "graph"
+    assert "/api/videopaint/jobs/%d/frames/%d/zimage-workflow-graph" % (jid, oidx) in link["url"]
+    assert link["target"] == "5"
+
+
+def test_zimage_ui_graph_roundtrip(monkeypatch, tmp_path):
+    if not _fake_object_info():
+        pytest.skip("缺少 /tmp/oi.json 节点契约快照，跳过往返校验")
+    graph = videopaint_zimage.build_zimage_pose_workflow(
+        pose_image="pose.png", positive="one person", negative="collage", seed=7
+    )
+    result = workflow_ui.validate_roundtrip(graph, info_lookup=_fake_object_info)
+    assert result["ok"], result["error"]

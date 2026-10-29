@@ -39,7 +39,9 @@
     result: null,
     expanding: false,
     history: [],
-    historyLoaded: false
+    historyLoaded: false,
+    aiProvider: null,
+    providerTouched: false
   };
 
   var refs = {};
@@ -94,6 +96,10 @@
     refs.historyList = doc.getElementById('history-list');
     refs.viewExpand = doc.getElementById('view-expand');
     refs.viewReverse = doc.getElementById('view-reverse');
+    refs.aiProvider = doc.getElementById('btn-ai-provider');
+    refs.aiProviderDot = doc.getElementById('ai-provider-dot');
+    refs.aiProviderLabel = doc.getElementById('ai-provider-label');
+    refs.provider = doc.getElementById('opt-provider');
 
     bindModeSeg();
     bindMediaSeg();
@@ -102,11 +108,14 @@
     bindAdvanced();
     bindActions();
     bindHistory();
+    bindAIProvider();
 
     restoreLayoutState();
     fillIntensity();
     loadLibraryMeta();
     loadWorkflows();
+    // 首屏就探测一次，已接入本地模型时直接显示绿点；服务未启动也只是异步降级。
+    loadAIProviderStatus(true);
     updateCharCount();
   }
 
@@ -416,6 +425,205 @@
     });
   }
 
+  /* ---------------------------------------------------------- 本地 GPT 连接 */
+
+  function bindAIProvider() {
+    if (refs.aiProvider) refs.aiProvider.addEventListener('click', openAIProviderModal);
+    if (refs.provider) {
+      refs.provider.addEventListener('change', function () {
+        state.providerTouched = true;
+      });
+    }
+  }
+
+  function fillProviderOptions(status) {
+    if (!refs.provider) return;
+    var current = refs.provider.value || 'rules';
+    var localAvailable = !!(status && status.enabled);
+    refs.provider.innerHTML = '';
+
+    var rules = doc.createElement('option');
+    rules.value = 'rules';
+    rules.textContent = '本地规则（确定性，不联网）';
+    refs.provider.appendChild(rules);
+
+    if (localAvailable) {
+      var local = doc.createElement('option');
+      local.value = 'openai_compatible';
+      local.textContent = status.reachable
+        ? '本地 GPT（' + (status.model || '自动选择') + '）'
+        : '本地 GPT（未连接，将自动回退规则）';
+      refs.provider.appendChild(local);
+    }
+
+    // 用户没手动选过时：连得上就用本地 GPT，否则保持规则引擎。
+    var want = current;
+    if (!state.providerTouched) {
+      want = status && status.enabled && status.reachable ? 'openai_compatible' : 'rules';
+    }
+    if (want === 'openai_compatible' && !localAvailable) want = 'rules';
+    refs.provider.value = want;
+  }
+
+  function aiProviderLabel(status) {
+    if (!status || !status.enabled) return '本地 GPT 未启用';
+    if (status.error_code) return '本地 GPT 异常';
+    if (status.reachable) return '本地 GPT 已连接';
+    return '本地 GPT 待检测';
+  }
+
+  function paintAIProvider(status) {
+    state.aiProvider = status || null;
+    fillProviderOptions(status);
+    if (refs.aiProviderLabel) refs.aiProviderLabel.textContent = aiProviderLabel(status);
+    if (refs.aiProviderDot) {
+      var cls = 'ai-provider-dot';
+      if (status && status.enabled && status.reachable) cls += ' is-on';
+      else if (status && status.enabled) cls += ' is-off';
+      refs.aiProviderDot.className = cls;
+    }
+    if (refs.aiProvider) {
+      var detail = status && status.endpoint && status.endpoint.label
+        ? '端点 ' + status.endpoint.label
+        : '点击查看配置与自检';
+      refs.aiProvider.title = detail;
+    }
+  }
+
+  function loadAIProviderStatus(probe) {
+    var params = probe ? { probe: 1 } : {};
+    return api().get('/api/prompts/ai-provider/status', params, { timeout: probe ? 20000 : 5000 })
+      .then(function (data) {
+        paintAIProvider(data);
+        return data;
+      }, function (err) {
+        paintAIProvider({
+          enabled: false,
+          configured: false,
+          error_code: 'request_failed',
+          error_message: ui().errorText(err, '读取本地 GPT 状态失败')
+        });
+        return null;
+      });
+  }
+
+  function openAIProviderModal() {
+    var body = ui().el('div', 'ai-provider-panel');
+    body.appendChild(ui().loadingInline('正在读取本地 GPT 状态…'));
+    var entry = ui().modal({
+      title: '本地 GPT 连接',
+      desc: 'AIBAR 通过 OpenAI-compatible 的 /v1/chat/completions 调用本地模型，支持 Ollama、LM Studio、llama.cpp server 与 vLLM。',
+      body: body,
+      actions: [
+        {
+          label: '测试连接',
+          variant: 'primary',
+          close: false,
+          onClick: function (modalEntry) {
+            testAIProvider(modalEntry);
+            return false;
+          }
+        },
+        { label: '关闭', variant: 'secondary' }
+      ]
+    });
+    loadAIProviderStatus(false).then(function (status) {
+      renderAIProviderModal(entry, status || {}, false);
+    });
+  }
+
+  function renderAIProviderModal(entry, status, busy) {
+    if (!entry || !entry.body) return;
+    var panel = ui().el('div', 'ai-provider-panel');
+    var reachable = !!(status && status.enabled && status.reachable);
+    var stateText = !status || !status.enabled
+      ? '未启用'
+      : status.error_code
+        ? '异常'
+        : reachable
+          ? '已连接'
+          : '待检测';
+
+    var head = ui().el('div', 'ai-provider-head');
+    var dot = ui().el('span', 'ai-provider-dot' + (reachable ? ' is-on' : (status && status.enabled ? ' is-off' : '')));
+    head.appendChild(dot);
+    head.appendChild(ui().el('strong', null, stateText));
+    if (busy) head.appendChild(ui().el('span', 'text-tertiary', '正在测试…'));
+    panel.appendChild(head);
+
+    var rows = [
+      ['端点', status && status.endpoint && status.endpoint.label ? status.endpoint.label : '未配置'],
+      ['模型', status && status.model ? status.model : '留空自动选择'],
+      ['模型来源', status && status.model_source === 'auto' ? '自动发现' : (status && status.model_source ? '显式配置' : '未配置')],
+      ['API Key', status && status.api_key_configured ? '已配置' : '未配置（本地服务通常留空）'],
+      ['超时', (status && status.timeout_seconds ? status.timeout_seconds : 60) + ' 秒']
+    ];
+    rows.forEach(function (pair) {
+      var row = ui().el('div', 'ai-provider-row');
+      row.appendChild(ui().el('span', 'ai-provider-key', pair[0]));
+      row.appendChild(ui().el('span', 'ai-provider-value', String(pair[1])));
+      panel.appendChild(row);
+    });
+
+    if (status && status.error_message) {
+      var error = ui().el('div', 'ai-provider-alert');
+      error.appendChild(ui().el('strong', null, status.error_message));
+      if (status.hint) error.appendChild(ui().el('p', null, status.hint));
+      panel.appendChild(error);
+    }
+
+    if (status && Array.isArray(status.models) && status.models.length) {
+      panel.appendChild(ui().el('div', 'ai-provider-key', '可用模型'));
+      var models = ui().el('div', 'ai-provider-models');
+      status.models.forEach(function (name) {
+        models.appendChild(ui().el('span', 'badge', name));
+      });
+      panel.appendChild(models);
+    }
+
+    var config = ui().el('pre', 'ai-provider-code');
+    config.textContent = [
+      'AI_PROVIDER_ENABLED=true',
+      'AI_PROVIDER_ENDPOINT=http://127.0.0.1:11434/v1',
+      'AI_PROVIDER_MODEL=',
+      'AI_PROVIDER_TIMEOUT=120'
+    ].join('\n');
+    panel.appendChild(ui().el('div', 'ai-provider-key', '在 .env 中配置'));
+    panel.appendChild(config);
+    panel.appendChild(ui().el('p', 'text-tertiary', '修改 .env 后需要重启 AIBAR。端点写根地址或 /v1 都可以，系统会自动归一化。'));
+
+    if (!busy && reachable && !status.chat_ok) {
+      panel.appendChild(ui().el('p', 'text-tertiary', '服务已连通；点「测试连接」会再发一条极短对话，验证模型能否正常推理。'));
+    }
+
+    entry.body.innerHTML = '';
+    entry.body.appendChild(panel);
+  }
+
+  function testAIProvider(entry) {
+    if (refs.aiProviderLabel) refs.aiProviderLabel.textContent = '测试中…';
+    renderAIProviderModal(entry, state.aiProvider || {}, true);
+    api().post('/api/prompts/ai-provider/test', {}, { timeout: 60000 }).then(function (data) {
+      paintAIProvider(data);
+      renderAIProviderModal(entry, data || {}, false);
+      if (data && data.chat_ok) {
+        ui().toastSuccess('本地 GPT 连接正常，模型已响应');
+      } else {
+        ui().toastError((data && data.error_message) || '本地 GPT 连接测试未通过');
+      }
+    }, function (err) {
+      var failed = {
+        enabled: true,
+        reachable: false,
+        error_code: 'request_failed',
+        error_message: ui().errorText(err, '测试本地 GPT 失败')
+      };
+      paintAIProvider(failed);
+      renderAIProviderModal(entry, failed, false);
+      ui().toastError(failed.error_message);
+    });
+  }
+
   /* ---------------------------------------------------------- 操作栏 */
 
   function bindActions() {
@@ -459,7 +667,7 @@
       intensity: refs.intensity ? refs.intensity.value : 'balanced',
       template_id: refs.template && refs.template.value ? refs.template.value : null,
       options: {},
-      provider: 'rules'
+      provider: refs.provider ? refs.provider.value : 'rules'
     };
 
     api().post('/api/prompts/expand', body, { timeout: api().LONG_TIMEOUT }).then(function (data) {

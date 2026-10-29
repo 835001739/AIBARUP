@@ -348,12 +348,15 @@ def wait_history(
         entry = history(prompt_id)
         if entry is not None:
             status = entry.get("status") or {}
+            # 执行失败时 ComfyUI 的 status.completed 仍是 false、outputs 为空，
+            # 只靠 completed/outputs 判断会一直等到超时，把明确的错误拖成 5 分钟。
+            status_str = str(status.get("status_str") or "").lower()
+            if status_str in ("error", "failed") or _status_error(status):
+                detail = _status_error(status) or "工作流执行失败"
+                raise ComfyUIError(
+                    classify_failure(detail), f"ComfyUI 工作流执行失败：{classify_failure(detail)}"
+                )
             if status.get("completed") or entry.get("outputs"):
-                detail = _status_error(status)
-                if detail:
-                    raise ComfyUIError(
-                        classify_failure(detail), f"ComfyUI 工作流执行失败：{classify_failure(detail)}"
-                    )
                 return entry
         if time.monotonic() >= deadline:
             _LOGGER.warning("comfyui_wait_timeout prompt_id=%s", prompt_id)
